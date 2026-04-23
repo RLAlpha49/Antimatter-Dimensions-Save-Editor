@@ -1,6 +1,3 @@
-/* Main SCSS file */
-
-// Base
 @use 'base/reset';
 @use 'base/variables';
 @use 'base/functions';
@@ -9,7 +6,6 @@
 @use 'base/typography';
 @use 'base/base';
 
-// Themes
 @use 'themes/light';
 @use 'themes/dark';
 @use 'themes/antimatter';
@@ -17,7 +13,6 @@
 @use 'themes/eternity';
 @use 'themes/reality';
 
-// Components
 @use 'components/buttons';
 @use 'components/cards';
 @use 'components/forms';
@@ -27,15 +22,14 @@
 @use 'components/json-editor';
 @use 'components/save-import';
 
-// Layout
 @use 'layout/header';
 @use 'layout/footer';
 @use 'layout/main';
 @use 'layout/sidebar';
 
-// Pages
 @use 'pages/editor';
 
-// Utilities
 @use 'utilities/color-utils';
 @use 'utilities/spacing';
+
+/* Main SCSS file */

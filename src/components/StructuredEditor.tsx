@@ -1,298 +1,439 @@
-import React, { useState, useEffect } from 'react';
-import { useSave } from '../contexts/SaveContext';
-import 'font-awesome/css/font-awesome.min.css';
-import { 
-  FaCubes, 
-  FaInfinity, 
-  FaHourglassEnd, 
-  FaSun, 
-  FaChartLine,
-  FaTrophy,
-  FaClone,
-  FaExpand,
-  FaRobot,
-  FaStar,
-  FaSlidersH,
-  FaHome
-} from 'react-icons/fa';
-import { 
-  GiBlackHoleBolas,
-  GiStoneBlock
-} from 'react-icons/gi';
-import { AntimatterDimensionsStruct } from '../Struct';
-import { SaveType } from '../services/SaveService';
-import { defaultSaveData } from '../utils/defaultSave';
-import { 
-  GeneralSection, 
-  DimensionsSection,
-  ReplicantiSection,
-  InfinitySection,
-  EternitySection,
-  DilationSection,
-  RealitySection,
-  GlyphsSection,
-  CelestialsSection,
-  BlackHolesSection,
-  ChallengesSection,
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useSave, useSaveSelector } from '../contexts/SaveContext';
+import { tokenizeDocumentPath } from '../core/document/path';
+import { SaveValidationIssue } from '../core/save/types';
+import {
   AutoBuyersSection,
-  RecordsSection, 
-  SettingsSection 
+  BlackHolesSection,
+  CelestialsSection,
+  ChallengesSection,
+  DilationSection,
+  DimensionsSection,
+  EternitySection,
+  GeneralSection,
+  GlyphsSection,
+  InfinitySection,
+  RealitySection,
+  RecordsSection,
+  ReplicantiSection,
+  SectionProps,
+  SettingsSection,
 } from './sections';
 
 interface StructuredEditorProps {
   isActive: boolean;
 }
 
-// Interface for validation status
-interface ValidationStatus {
-  path: string;
-  isValid: boolean;
-  message?: string;
-  timestamp: number;
+interface StructuredSectionDefinition {
+  id: string;
+  title: string;
+  description: string;
+  Component: React.ComponentType<SectionProps>;
+  issuePrefixes: string[];
 }
 
-/**
- * Structured editor allowing editing specific parts of save data
- */
-const StructuredEditor: React.FC<StructuredEditorProps> = ({ isActive }) => {
-  const { modifiedSaveData, updateSaveData, isLoaded, saveType } = useSave();
-  // State to store validation statuses
-  const [validationStatuses, setValidationStatuses] = useState<ValidationStatus[]>([]);
-  // State to track the active section (declared only once)
-  const [activeSection, setActiveSection] = useState('general');
+const structuredSections: StructuredSectionDefinition[] = [
+  {
+    id: 'general',
+    title: 'General',
+    description: 'Core progression, currencies, and top-level save values.',
+    Component: GeneralSection,
+    issuePrefixes: [
+      'antimatter',
+      'matter',
+      'buyUntil10',
+      'break',
+      'brake',
+      'dimensionBoosts',
+      'galaxies',
+      'sacrificed',
+      'version',
+      'partInfinityPoint',
+      'partInfinitied',
+      'totalTickGained',
+      'totalTickBought',
+    ],
+  },
+  {
+    id: 'dimensions',
+    title: 'Dimensions',
+    description: 'Antimatter, Infinity, Time, Eternity, and Reality dimensions.',
+    Component: DimensionsSection,
+    issuePrefixes: [
+      'dimensions.antimatter',
+      'dimensions.infinity',
+      'dimensions.time',
+      'eternityDimensions',
+      'realityDimensions',
+    ],
+  },
+  {
+    id: 'replicanti',
+    title: 'Replicanti',
+    description: 'Replicanti settings, upgrades, and galaxy growth.',
+    Component: ReplicantiSection,
+    issuePrefixes: ['replicanti'],
+  },
+  {
+    id: 'infinity',
+    title: 'Infinity',
+    description: 'Infinity resources, upgrades, and related progression.',
+    Component: InfinitySection,
+    issuePrefixes: [
+      'infinity',
+      'infinityPoints',
+      'infinities',
+      'infinitiesBanked',
+      'infinityPower',
+      'IPMultPurchases',
+      'infMult',
+      'autoIP',
+      'bestInfinityTime',
+      'thisInfinityTime',
+    ],
+  },
+  {
+    id: 'eternity',
+    title: 'Eternity',
+    description: 'Eternity currencies, studies, and related progression.',
+    Component: EternitySection,
+    issuePrefixes: [
+      'eternity',
+      'eternityPoints',
+      'eternities',
+      'timeShards',
+      'timeDimension',
+      'timestudy',
+    ],
+  },
+  {
+    id: 'dilation',
+    title: 'Dilation',
+    description: 'Time dilation resources, upgrades, and rebuyables.',
+    Component: DilationSection,
+    issuePrefixes: ['dilation', 'dilatedTime', 'tachyonParticles'],
+  },
+  {
+    id: 'reality',
+    title: 'Reality',
+    description: 'Reality progression, machines, and automator state.',
+    Component: RealitySection,
+    issuePrefixes: ['realities', 'partSimulatedReality', 'reality'],
+  },
+  {
+    id: 'glyphs',
+    title: 'Glyphs',
+    description: 'Glyph inventory, filter state, and sacrifice progress.',
+    Component: GlyphsSection,
+    issuePrefixes: ['glyphs', 'reality.glyphs', 'sac'],
+  },
+  {
+    id: 'celestials',
+    title: 'Celestials',
+    description: 'Celestial progression, unlocks, and run-specific data.',
+    Component: CelestialsSection,
+    issuePrefixes: ['celestials'],
+  },
+  {
+    id: 'black-holes',
+    title: 'Black Holes',
+    description: 'Black hole upgrades, intervals, and state.',
+    Component: BlackHolesSection,
+    issuePrefixes: ['blackHole', 'blackHolePause', 'reality.blackHoleBits'],
+  },
+  {
+    id: 'challenges',
+    title: 'Challenges',
+    description: 'Normal, Infinity, Eternity, and Reality challenge state.',
+    Component: ChallengesSection,
+    issuePrefixes: ['challenge', 'challenges'],
+  },
+  {
+    id: 'autobuyers',
+    title: 'Autobuyers',
+    description: 'Automation toggles, intervals, and purchase settings.',
+    Component: AutoBuyersSection,
+    issuePrefixes: ['auto', 'autobuyer'],
+  },
+  {
+    id: 'records',
+    title: 'Records',
+    description: 'Timers, best runs, and historical milestone records.',
+    Component: RecordsSection,
+    issuePrefixes: ['records', 'lastTen', 'best'],
+  },
+  {
+    id: 'settings',
+    title: 'Settings',
+    description: 'Options, confirmations, UI preferences, and toggles.',
+    Component: SettingsSection,
+    issuePrefixes: ['options'],
+  },
+];
 
-  // Duration for displaying validation messages (3 seconds)
-  const VALIDATION_DISPLAY_DURATION = 3000;
+const severityClassByIssue = (issues: SaveValidationIssue[]): string => {
+  if (issues.some((issue) => issue.severity === 'error')) {
+    return 'danger';
+  }
 
-  // Clean up expired validation statuses
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      const now = Date.now();
-      setValidationStatuses(prev => 
-        prev.filter(status => (now - status.timestamp) < VALIDATION_DISPLAY_DURATION)
-      );
-    }, 1000);
+  if (issues.length > 0) {
+    return 'warning';
+  }
 
-    return () => clearInterval(intervalId);
-  }, []);
+  return 'success';
+};
 
-  // Function to validate a value based on its type
-  const validateValue = (path: string, value: any): boolean => {
-    // If the path is empty, we don't validate (replaces all data)
-    if (!path) return true;
+const arePathsRelated = (leftPath: string, rightPath: string): boolean => {
+  if (!leftPath || !rightPath) {
+    return leftPath === rightPath;
+  }
 
-    const pathParts = path.split('.');
-    const lastPart = pathParts[pathParts.length - 1];
-
-    // For Android format, validate number objects format
-    if (saveType === SaveType.Android && typeof value === 'object' && value !== null && 'mantissa' in value && 'exponent' in value) {
-      const { mantissa, exponent } = value;
-      return (
-        typeof mantissa === 'number' && !isNaN(mantissa) &&
-        typeof exponent === 'number' && !isNaN(exponent) && Number.isInteger(exponent)
-      );
-    }
-
-    // For PC format, validate string number format
-    if (saveType === SaveType.PC && 
-      (lastPart === 'amount' || 
-      path === 'antimatter' || 
-      path === 'infinityPoints' || 
-      path === 'eternityPoints' ||
-      path === 'infinityPower' ||
-      path.includes('replicanti.amount') ||
-      path.includes('dilatedTime') ||
-      path.includes('tachyonParticles') ||
-      path.includes('realityMachines'))
-    ) {
-      // Scientific numbers (can contain e, E, ., +, -)
-      return /^-?\d+(\.\d+)?(e[+-]?\d+)?$/i.test(value.toString()) || value === "Infinity";
-    }
-
-    if (
-      lastPart === 'bought' || 
-      path === 'infinities' || 
-      path === 'eternities' || 
-      path === 'realities' ||
-      path.includes('galaxies') ||
-      path.includes('Bits') ||
-      path.includes('slots') ||
-      path.includes('Points')
-    ) {
-      // Integer numbers
-      return /^\d+$/.test(value.toString());
-    }
-
-    if (lastPart === 'chance') {
-      // Probability between 0 and 1
-      const num = parseFloat(value);
-      return !isNaN(num) && num >= 0 && num <= 1;
-    }
-
-    if (lastPart === 'interval') {
-      // Interval in ms, must be positive
-      const num = parseFloat(value);
-      return !isNaN(num) && num > 0;
-    }
-
-    // By default, we accept the value
+  if (leftPath === rightPath) {
     return true;
-  };
+  }
 
-  // Handler to update a value with validation
-  const handleValueChange = (path: string, value: any) => {
-    const isValid = validateValue(path, value);
-    
-    // Add validation status
-    setValidationStatuses(prev => [
-      ...prev.filter(status => status.path !== path),
-      { 
-        path, 
-        isValid, 
-        message: isValid ? "Valid value" : "Invalid format", 
-        timestamp: Date.now() 
-      }
-    ]);
+  const leftTokens = tokenizeDocumentPath(leftPath);
+  const rightTokens = tokenizeDocumentPath(rightPath);
+  const sharedLength = Math.min(leftTokens.length, rightTokens.length);
 
-    // If valid, update the data
-    if (isValid) {
-      updateSaveData(path, value);
+  if (sharedLength === 0) {
+    return false;
+  }
+
+  for (let index = 0; index < sharedLength; index += 1) {
+    if (leftTokens[index] !== rightTokens[index]) {
+      return false;
     }
-  };
+  }
 
-  // Get validation status for a given path
-  const getValidationStatus = (path: string): ValidationStatus | undefined => {
-    return validationStatuses.find(status => status.path === path);
-  };
+  return true;
+};
 
-  // Render a validation indicator
-  const renderValidationIndicator = (path: string) => {
-    const status = getValidationStatus(path);
-    
-    if (!status) return null;
-    
+const matchesIssuePrefix = (issuePath: string | undefined, prefix: string): boolean => {
+  if (!issuePath || !prefix) {
+    return false;
+  }
+
+  return arePathsRelated(issuePath, prefix);
+};
+
+const sanitizePathForId = (path: string): string => {
+  return path.replace(/[^a-zA-Z0-9_-]+/g, '-');
+};
+
+const LEGACY_LABEL_ID_PREFIX = 'legacy-section-label-';
+const LEGACY_VALIDATION_ID_PREFIX = 'legacy-validation-';
+
+const updateDescribedBy = (control: HTMLElement, validationId: string | null): void => {
+  const existing = (control.getAttribute('aria-describedby') ?? '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((token) => !token.startsWith(LEGACY_VALIDATION_ID_PREFIX));
+
+  if (validationId) {
+    existing.push(validationId);
+  }
+
+  if (existing.length > 0) {
+    control.setAttribute('aria-describedby', existing.join(' '));
+    return;
+  }
+
+  control.removeAttribute('aria-describedby');
+};
+
+const StructuredEditor: React.FC<StructuredEditorProps> = ({ isActive }) => {
+  const panelId = useId();
+  const { isLoaded, modifiedSaveData, saveType, updateSaveData } = useSave();
+  const document = useSaveSelector((state) => state.document);
+  const panelRef = useRef<HTMLElement | null>(null);
+  const [activeSectionId, setActiveSectionId] = useState<string>(structuredSections[0].id);
+
+  useEffect(() => {
+    if (!structuredSections.some((section) => section.id === activeSectionId)) {
+      setActiveSectionId(structuredSections[0].id);
+    }
+  }, [activeSectionId]);
+
+  const validationIssues = useMemo(() => document?.validation.issues ?? [], [document]);
+
+  const sectionIssues = useMemo(() => {
+    return structuredSections.reduce<Record<string, SaveValidationIssue[]>>((accumulator, section) => {
+      accumulator[section.id] = validationIssues.filter((issue) => {
+        return section.issuePrefixes.some((prefix) => matchesIssuePrefix(issue.path, prefix));
+      });
+
+      return accumulator;
+    }, {});
+  }, [validationIssues]);
+
+  const renderValidationIndicator = useMemo(() => {
+    return (path: string): React.ReactNode => {
+      const matchingIssues = validationIssues.filter((issue) => {
+        if (!issue.path) {
+          return false;
+        }
+
+        return arePathsRelated(issue.path, path);
+      });
+
+      if (matchingIssues.length === 0) {
+        return null;
+      }
+
+      const severityClass = severityClassByIssue(matchingIssues);
+      const title = matchingIssues.map((issue) => issue.message).join('\n');
+      const label = matchingIssues.some((issue) => issue.severity === 'error')
+        ? `${matchingIssues.length} validation error${matchingIssues.length === 1 ? '' : 's'}`
+        : `${matchingIssues.length} validation warning${matchingIssues.length === 1 ? '' : 's'}`;
+      const validationId = `${LEGACY_VALIDATION_ID_PREFIX}${sanitizePathForId(path)}`;
+
+      return (
+        <span
+          id={validationId}
+          className={`validation-indicator status-chip ${severityClass}`}
+          title={title}
+          aria-label={label}
+          data-validation-id={validationId}
+          data-validation-path={path}
+        >
+          {matchingIssues.length}
+        </span>
+      );
+    };
+  }, [validationIssues]);
+
+  useEffect(() => {
+    const panelElement = panelRef.current;
+    if (!panelElement) {
+      return;
+    }
+
+    const formGroups = panelElement.querySelectorAll<HTMLElement>('.form-group');
+
+    formGroups.forEach((group, index) => {
+      const label = group.querySelector<HTMLElement>('label');
+      const controls = Array.from(group.querySelectorAll<HTMLElement>('input, select, textarea'));
+      const validationIndicator = group.querySelector<HTMLElement>('[data-validation-id]');
+
+      if (label) {
+        if (!label.id) {
+          label.id = `${LEGACY_LABEL_ID_PREFIX}${activeSectionId}-${index}`;
+        }
+
+        controls.forEach((control) => {
+          if (!control.getAttribute('aria-labelledby')) {
+            control.setAttribute('aria-labelledby', label.id);
+          }
+        });
+      }
+
+      controls.forEach((control) => {
+        const validationId = validationIndicator?.getAttribute('data-validation-id') ?? null;
+        updateDescribedBy(control, validationId);
+
+        if (validationId) {
+          control.setAttribute('aria-invalid', 'true');
+          return;
+        }
+
+        control.removeAttribute('aria-invalid');
+      });
+    });
+  }, [activeSectionId, modifiedSaveData, validationIssues]);
+
+  const activeSection = structuredSections.find((section) => section.id === activeSectionId) ?? structuredSections[0];
+  const activeSectionIssueCount = sectionIssues[activeSection.id]?.length ?? 0;
+  const ActiveSectionComponent = activeSection.Component;
+
+  if (!isActive) {
+    return null;
+  }
+
+  if (!isLoaded || !document || !modifiedSaveData) {
     return (
-      <div className={`validation-indicator ${status.isValid ? 'valid' : 'invalid'}`}>
-        {status.isValid ? (
-          <i className="fa fa-check-circle" title="Valid value"></i>
-        ) : (
-          <i className="fa fa-times-circle" title="Invalid format"></i>
-        )}
+      <div className="editor-empty-state" role="status" aria-live="polite">
+        <h3>Structured editor unavailable</h3>
+        <p>Import and decode a PC or Android save to browse the historical editor sections.</p>
       </div>
     );
-  };
-
-  // Organizing tabs in a logical order based on game progression and related features
-  const tabs = [
-    // Core game mechanics
-    { id: 'general', label: 'Main Resources', icon: <FaHome />, render: () => <GeneralSection saveData={modifiedSaveData || defaultSaveData as AntimatterDimensionsStruct} handleValueChange={handleValueChange} renderValidationIndicator={renderValidationIndicator} saveType={saveType} /> },
-    { id: 'dimensions', label: 'Dimensions', icon: <FaCubes />, render: () => <DimensionsSection saveData={modifiedSaveData || defaultSaveData as AntimatterDimensionsStruct} handleValueChange={handleValueChange} renderValidationIndicator={renderValidationIndicator} saveType={saveType} /> },
-    
-    // Prestige mechanics (in order of progression)
-    { id: 'infinity', label: 'Infinity', icon: <FaInfinity />, render: () => <InfinitySection saveData={modifiedSaveData || defaultSaveData as AntimatterDimensionsStruct} handleValueChange={handleValueChange} renderValidationIndicator={renderValidationIndicator} saveType={saveType} /> },
-    { id: 'replicanti', label: 'Replicanti', icon: <FaClone />, render: () => <ReplicantiSection saveData={modifiedSaveData || defaultSaveData as AntimatterDimensionsStruct} handleValueChange={handleValueChange} renderValidationIndicator={renderValidationIndicator} saveType={saveType} /> },
-    { id: 'eternity', label: 'Eternity', icon: <FaHourglassEnd />, render: () => <EternitySection saveData={modifiedSaveData || defaultSaveData as AntimatterDimensionsStruct} handleValueChange={handleValueChange} renderValidationIndicator={renderValidationIndicator} saveType={saveType} /> },
-    { id: 'dilation', label: 'Dilation', icon: <FaExpand />, render: () => <DilationSection saveData={modifiedSaveData || defaultSaveData as AntimatterDimensionsStruct} handleValueChange={handleValueChange} renderValidationIndicator={renderValidationIndicator} saveType={saveType} /> },
-    { id: 'reality', label: 'Reality', icon: <FaSun />, render: () => <RealitySection saveData={modifiedSaveData || defaultSaveData as AntimatterDimensionsStruct} handleValueChange={handleValueChange} renderValidationIndicator={renderValidationIndicator} saveType={saveType} /> },
-    { id: 'glyphs', label: 'Glyphs', icon: <GiStoneBlock />, render: () => <GlyphsSection saveData={modifiedSaveData || defaultSaveData as AntimatterDimensionsStruct} handleValueChange={handleValueChange} renderValidationIndicator={renderValidationIndicator} saveType={saveType} /> },
-    
-    // Advanced game mechanics
-    { id: 'celestials', label: 'Celestials', icon: <FaStar />, render: () => <CelestialsSection saveData={modifiedSaveData || defaultSaveData as AntimatterDimensionsStruct} handleValueChange={handleValueChange} renderValidationIndicator={renderValidationIndicator} saveType={saveType} /> },
-    { id: 'black-holes', label: 'Black Holes', icon: <GiBlackHoleBolas />, render: () => <BlackHolesSection saveData={modifiedSaveData || defaultSaveData as AntimatterDimensionsStruct} handleValueChange={handleValueChange} renderValidationIndicator={renderValidationIndicator} saveType={saveType} /> },
-    { id: 'challenges', label: 'Challenges', icon: <FaTrophy />, render: () => <ChallengesSection saveData={modifiedSaveData || defaultSaveData as AntimatterDimensionsStruct} handleValueChange={handleValueChange} renderValidationIndicator={renderValidationIndicator} saveType={saveType} /> },
-    
-    // Automation and records
-    { id: 'autobuyers', label: 'Auto Buyers', icon: <FaRobot />, render: () => <AutoBuyersSection saveData={modifiedSaveData || defaultSaveData as AntimatterDimensionsStruct} handleValueChange={handleValueChange} renderValidationIndicator={renderValidationIndicator} saveType={saveType} /> },
-    { id: 'records', label: 'Records & Stats', icon: <FaChartLine />, render: () => <RecordsSection saveData={modifiedSaveData || defaultSaveData as AntimatterDimensionsStruct} handleValueChange={handleValueChange} renderValidationIndicator={renderValidationIndicator} saveType={saveType} /> },
-    
-    // Settings
-    { id: 'settings', label: 'Settings', icon: <FaSlidersH />, render: () => <SettingsSection saveData={modifiedSaveData || defaultSaveData as AntimatterDimensionsStruct} handleValueChange={handleValueChange} renderValidationIndicator={renderValidationIndicator} saveType={saveType} /> }
-  ];
-
-  // Tab click handling
-  const handleTabClick = (tabId: string) => {
-    setActiveSection(tabId);
-  };
-
-  // Subtab click handling
-  const handleSubtabClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    const subtabId = e.currentTarget.getAttribute('data-subtab');
-    if (!subtabId) return;
-    
-    // DOM update to show the active tab
-    const container = e.currentTarget.closest('.tabs-container');
-    if (container) {
-      // Update buttons
-      const buttons = container.querySelectorAll('.tab-button');
-      buttons.forEach(button => button.classList.remove('active'));
-      e.currentTarget.classList.add('active');
-      
-      // Update content
-      const contents = container.querySelectorAll('.tab-pane');
-      contents.forEach(content => {
-        if (content instanceof HTMLElement) {
-          content.style.display = 'none';
-          content.classList.remove('active');
-        }
-      });
-      
-      const activeContent = container.querySelector(`.tab-pane[data-subtab="${subtabId}"]`);
-      if (activeContent instanceof HTMLElement) {
-        activeContent.style.display = 'block';
-        activeContent.classList.add('active');
-      }
-    }
-  };
-
-  // After initial render, connect event handlers
-  useEffect(() => {
-    const tabButtons = document.querySelectorAll('.tab-button[data-subtab]');
-    tabButtons.forEach(button => {
-      button.addEventListener('click', handleSubtabClick as unknown as EventListener);
-    });
-    
-    return () => {
-      tabButtons.forEach(button => {
-        button.removeEventListener('click', handleSubtabClick as unknown as EventListener);
-      });
-    };
-  }, [activeSection]);
-
-  // Rendu du contenu en fonction de la section active
-  const renderActiveSection = () => {
-    const activeTab = tabs.find(tab => tab.id === activeSection);
-    return activeTab ? activeTab.render() : null;
-  };
+  }
 
   return (
-    <div className="structured-editor" style={{ display: isActive ? 'block' : 'none' }}>
-      {/* Navigation */}
+    <div className="structured-editor" aria-label="Structured save editor">
       <div className="editor-sections">
-        <nav className="section-nav" role="tablist" aria-label="Editor sections">
-          {/* Navigation buttons */}
-          {tabs.map(section => (
-            <button
-              key={section.id}
-              className={`section-button ${activeSection === section.id ? 'active' : ''}`}
-              role="tab"
-              aria-selected={activeSection === section.id}
-              aria-controls={`section-${section.id}`}
-              onClick={() => handleTabClick(section.id)}
-            >
-              {section.icon}
-              <span>{section.label}</span>
-            </button>
-          ))}
+        <nav className="section-nav" aria-label="Structured editor sections">
+          <div className="section-nav-header">
+            <h3>Sections</h3>
+            <p>Choose a save area to edit against the current document store.</p>
+          </div>
+
+          <div className="section-nav-list" role="tablist" aria-orientation="vertical">
+            {structuredSections.map((section) => {
+              const isSelected = section.id === activeSection.id;
+              const issues = sectionIssues[section.id] ?? [];
+              const severityClass = issues.length > 0 ? severityClassByIssue(issues) : 'neutral';
+
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  role="tab"
+                  id={`${panelId}-${section.id}-tab`}
+                  className={`section-button ${isSelected ? 'active' : ''}`}
+                  onClick={() => setActiveSectionId(section.id)}
+                  aria-selected={isSelected}
+                  aria-controls={`${panelId}-${section.id}-panel`}
+                  aria-label={issues.length > 0
+                    ? `${section.title}, ${issues.length} issue${issues.length === 1 ? '' : 's'}`
+                    : `${section.title}, no issues`}
+                >
+                  <span>{section.title}</span>
+                  {issues.length > 0 && (
+                    <span className={`status-chip ${severityClass}`} aria-hidden="true">
+                      {issues.length}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </nav>
-        
-        {/* Contenu principal */}
+
         <div className="section-content">
-          {renderActiveSection()}
+          <section
+            ref={panelRef}
+            id={`${panelId}-${activeSection.id}-panel`}
+            className="section-pane active"
+            role="tabpanel"
+            aria-labelledby={`${panelId}-${activeSection.id}-tab`}
+          >
+            <header className="structured-editor-toolbar">
+              <div>
+                <h2>{activeSection.title}</h2>
+                <p>{activeSection.description}</p>
+              </div>
+              <div className="structured-editor-status" aria-label="Section validation status">
+                <span className="status-chip neutral">Format: {saveType.toUpperCase()}</span>
+                <span className={`status-chip ${activeSectionIssueCount > 0 ? severityClassByIssue(sectionIssues[activeSection.id] ?? []) : 'success'}`}>
+                  {activeSectionIssueCount > 0
+                    ? `${activeSectionIssueCount} issue${activeSectionIssueCount === 1 ? '' : 's'}`
+                    : 'No issues'}
+                </span>
+              </div>
+            </header>
+
+            <ActiveSectionComponent
+              saveData={modifiedSaveData}
+              handleValueChange={updateSaveData}
+              renderValidationIndicator={renderValidationIndicator}
+              saveType={saveType}
+            />
+          </section>
         </div>
       </div>
     </div>
   );
 };
 
-// Exporter le composant avec export default
-export default StructuredEditor; 
+export default StructuredEditor;

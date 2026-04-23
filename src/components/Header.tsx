@@ -6,11 +6,11 @@ const Header: React.FC = () => {
   const { isLoaded, testResults, testSave } = useSave();
 
   const handleTest = () => {
-    if (isLoaded) {
-      testSave();
-    } else {
-      alert('Please decrypt a save first');
+    if (!isLoaded) {
+      return;
     }
+
+    testSave();
   };
 
   return (

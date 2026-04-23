@@ -1,974 +1,763 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useSave } from '../contexts/SaveContext';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { SaveDataRecord, SaveValidationIssue } from '../core/save/types';
+import { useSaveActions, useSaveSelector } from '../contexts/SaveContext';
+import JsonCodeMirror, { JsonCodeMirrorHandle, JsonCursorState } from './JsonCodeMirror';
 
-// Component props
 interface JsonEditorProps {
   isActive: boolean;
 }
 
-// JSON node types
-interface JsonNode {
-  key: string;
-  path: string;
-  value: any;
-  type: 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null';
-  depth: number;
-  expanded: boolean;
-  children?: JsonNode[];
+const stringifyDocument = (value: unknown): string => JSON.stringify(value, null, 2);
+
+const HISTORY_LIMIT = 60;
+const HISTORY_COMMIT_DELAY_MS = 350;
+const PARSE_DELAY_MS = 140;
+
+interface ParseState {
+  parsed: unknown | null;
+  errorMessage: string | null;
+  errorOffset: number | null;
+  errorLine: number | null;
+  errorColumn: number | null;
+  isRootObject: boolean;
 }
 
-const JsonEditorComponent: React.FC<JsonEditorProps> = ({ isActive }) => {
-  const { modifiedSaveData, updateSaveData } = useSave();
-  const [jsonText, setJsonText] = useState<string>('');
-  const [error, setError] = useState<string | null>(null);
-  const [lineCount, setLineCount] = useState<number>(0);
-  const [autoUpdate, setAutoUpdate] = useState<boolean>(true);
-  const [parsed, setParsed] = useState<any>(null);
-  const [isValidJson, setIsValidJson] = useState<boolean>(true);
-  const [showSearch, setShowSearch] = useState<boolean>(false);
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [searchResults, setSearchResults] = useState<number[]>([]);
-  const [currentSearchResult, setCurrentSearchResult] = useState<number>(0);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const [unsavedChanges, setUnsavedChanges] = useState<boolean>(false);
-  const [jsonTree, setJsonTree] = useState<JsonNode[]>([]);
-  const [editingNode, setEditingNode] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState<string>('');
-  const [preventTreeRebuild, setPreventTreeRebuild] = useState<boolean>(false);
+interface DraftHistoryState {
+  entries: string[];
+  index: number;
+}
 
-  // Update textarea content when save data changes
-  useEffect(() => {
-    if (modifiedSaveData) {
-      try {
-        const formatted = JSON.stringify(modifiedSaveData, null, 2);
-        setJsonText(formatted);
-        setParsed(modifiedSaveData);
-        setIsValidJson(true);
-        setError(null);
-        setUnsavedChanges(false);
-        
-        // Count number of lines
-        setLineCount((formatted.match(/\n/g) || []).length + 1);
-        
-        // Parse the JSON into a tree structure for the collapsible view
-        if (!preventTreeRebuild) {
-          parseJsonToTree(modifiedSaveData);
-        }
-      } catch (e) {
-        console.error('Error formatting JSON:', e);
-        setError('Error formatting JSON');
-      }
-    }
-  }, [modifiedSaveData, preventTreeRebuild]);
+interface SearchState {
+  query: string;
+  caseSensitive: boolean;
+}
 
-  // Parse JSON into a tree structure
-  const parseJsonToTree = (jsonData: any) => {
-    const rootNode: JsonNode[] = [];
-    
-    // Keep track of expanded states by path
-    const expandedStates = new Map<string, boolean>();
-    
-    // Save current expanded states before rebuilding
-    const saveExpandedStates = (nodes: JsonNode[]) => {
-      nodes.forEach(node => {
-        expandedStates.set(node.path, node.expanded);
-        if (node.children && node.children.length > 0) {
-          saveExpandedStates(node.children);
-        }
-      });
+const EMPTY_PARSE_STATE: ParseState = {
+  parsed: null,
+  errorMessage: null,
+  errorOffset: null,
+  errorLine: null,
+  errorColumn: null,
+  isRootObject: false,
+};
+
+const isSaveObjectRoot = (value: unknown): value is SaveDataRecord => {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+};
+
+const extractJsonErrorPosition = (message: string): { offset: number | null; line: number | null; column: number | null } => {
+  const offsetMatch = message.match(/\bposition\s+(\d+)\b/i);
+  if (offsetMatch) {
+    return { offset: Number(offsetMatch[1]), line: null, column: null };
+  }
+
+  const lineColumnMatch = message.match(/\bline\s+(\d+)\s+column\s+(\d+)\b/i);
+  if (lineColumnMatch) {
+    return {
+      offset: null,
+      line: Number(lineColumnMatch[1]),
+      column: Number(lineColumnMatch[2]),
     };
-    
-    // Save existing expanded states if we have a tree
-    if (jsonTree.length > 0) {
-      saveExpandedStates(jsonTree);
+  }
+
+  return { offset: null, line: null, column: null };
+};
+
+const getLineColumnFromOffset = (text: string, offset: number): { line: number; column: number } => {
+  const safeOffset = Math.max(0, Math.min(offset, text.length));
+  let line = 1;
+  let column = 1;
+
+  for (let index = 0; index < safeOffset; index += 1) {
+    if (text[index] === '\n') {
+      line += 1;
+      column = 1;
+    } else {
+      column += 1;
     }
-    
-    // This buildTree function now uses collapsed state by default
-    // All nodes will start collapsed on initial load
-    // On subsequent updates, it will preserve the previous expanded/collapsed state
-    const buildTree = (data: any, path: string = '', key: string = 'root', depth: number = 0) => {
-      const type = Array.isArray(data) ? 'array' : typeof data === 'object' && data !== null ? 'object' : typeof data;
-      
-      // Check if this path was previously expanded
-      // For initial load (empty jsonTree), keep everything collapsed by default
-      // Otherwise use previously saved expansion state or collapse by default
-      const wasExpanded = jsonTree.length > 0 
-        ? (expandedStates.has(path) ? expandedStates.get(path) : false) 
-        : false;
-      
-      const node: JsonNode = {
-        key,
-        path,
-        value: data,
-        type: type as any,
-        depth,
-        expanded: wasExpanded,
-        children: [],
+  }
+
+  return { line, column };
+};
+
+const getOffsetFromLineColumn = (text: string, line: number, column: number): number => {
+  if (line <= 1 && column <= 1) {
+    return 0;
+  }
+
+  let currentLine = 1;
+  let currentColumn = 1;
+
+  for (let index = 0; index < text.length; index += 1) {
+    if (currentLine === line && currentColumn === column) {
+      return index;
+    }
+
+    if (text[index] === '\n') {
+      currentLine += 1;
+      currentColumn = 1;
+    } else {
+      currentColumn += 1;
+    }
+  }
+
+  return text.length;
+};
+
+const parseDraft = (value: string): ParseState => {
+  if (!value.trim()) {
+    return {
+      ...EMPTY_PARSE_STATE,
+      errorMessage: 'JSON content is required.',
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return {
+      parsed,
+      errorMessage: null,
+      errorOffset: null,
+      errorLine: null,
+      errorColumn: null,
+      isRootObject: isSaveObjectRoot(parsed),
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Invalid JSON';
+    const extracted = extractJsonErrorPosition(message);
+
+    if (extracted.offset !== null) {
+      const location = getLineColumnFromOffset(value, extracted.offset);
+      return {
+        ...EMPTY_PARSE_STATE,
+        errorMessage: message,
+        errorOffset: extracted.offset,
+        errorLine: location.line,
+        errorColumn: location.column,
       };
-      
-      if (type === 'object' && data !== null) {
-        node.children = Object.keys(data).map((k) => {
-          const childPath = path ? `${path}.${k}` : k;
-          return buildTree(data[k], childPath, k, depth + 1);
-        });
-      } else if (type === 'array') {
-        node.children = data.map((item: any, index: number) => {
-          const childPath = path ? `${path}[${index}]` : `[${index}]`;
-          return buildTree(item, childPath, `${index}`, depth + 1);
-        });
-      }
-      
-      return node;
-    };
-    
-    if (typeof jsonData === 'object' && jsonData !== null) {
-      if (Array.isArray(jsonData)) {
-        jsonData.forEach((item, index) => {
-          rootNode.push(buildTree(item, `[${index}]`, `${index}`, 0));
-        });
-      } else {
-        Object.keys(jsonData).forEach(key => {
-          rootNode.push(buildTree(jsonData[key], key, key, 0));
-        });
-      }
     }
-    
-    setJsonTree(rootNode);
+
+    const derivedOffset = extracted.line !== null && extracted.column !== null
+      ? getOffsetFromLineColumn(value, extracted.line, extracted.column)
+      : null;
+
+    return {
+      ...EMPTY_PARSE_STATE,
+      errorMessage: message,
+      errorOffset: derivedOffset,
+      errorLine: extracted.line,
+      errorColumn: extracted.column,
+    };
+  }
+};
+
+const pushHistoryEntry = (state: DraftHistoryState, value: string): DraftHistoryState => {
+  if (state.index >= 0 && state.entries[state.index] === value) {
+    return state;
+  }
+
+  const nextEntries = state.entries.slice(0, state.index + 1);
+  nextEntries.push(value);
+
+  const trimmedEntries = nextEntries.length > HISTORY_LIMIT
+    ? nextEntries.slice(nextEntries.length - HISTORY_LIMIT)
+    : nextEntries;
+
+  return {
+    entries: trimmedEntries,
+    index: trimmedEntries.length - 1,
+  };
+};
+
+const countOccurrences = (text: string, query: string, caseSensitive: boolean): number[] => {
+  if (!query) {
+    return [];
+  }
+
+  const haystack = caseSensitive ? text : text.toLowerCase();
+  const needle = caseSensitive ? query : query.toLowerCase();
+  if (!needle) {
+    return [];
+  }
+
+  const offsets: number[] = [];
+  let offset = 0;
+
+  while (offset < haystack.length) {
+    const nextOffset = haystack.indexOf(needle, offset);
+    if (nextOffset === -1) {
+      break;
+    }
+
+    offsets.push(nextOffset);
+    offset = nextOffset + Math.max(needle.length, 1);
+  }
+
+  return offsets;
+};
+
+const summarizeValidation = (issues: SaveValidationIssue[]) => {
+  const errors = issues.filter((issue) => issue.severity === 'error');
+  const warnings = issues.filter((issue) => issue.severity === 'warning');
+  const counts = new Map<string, number>();
+
+  for (const issue of issues) {
+    const key = issue.path ?? 'General';
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  const topPaths = [...counts.entries()]
+    .map(([path, count]) => ({ path, count }))
+    .sort((left, right) => right.count - left.count)
+    .slice(0, 5);
+
+  return {
+    errors,
+    warnings,
+    topPaths,
+  };
+};
+
+const copyTextToClipboard = async (value: string): Promise<boolean> => {
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return true;
+  }
+
+  if (typeof document === 'undefined') {
+    return false;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', 'true');
+  textarea.style.position = 'absolute';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const didCopy = document.execCommand('copy');
+  document.body.removeChild(textarea);
+  return didCopy;
+};
+
+const JsonEditor: React.FC<JsonEditorProps> = ({ isActive }) => {
+  const saveDocument = useSaveSelector((state) => (isActive ? state.document : null));
+  const validation = useSaveSelector((state) => (isActive ? state.document?.validation ?? null : null));
+  const { replaceSaveData } = useSaveActions();
+  const [draft, setDraft] = useState('');
+  const [baselineDraft, setBaselineDraft] = useState('');
+  const [parseState, setParseState] = useState<ParseState>(EMPTY_PARSE_STATE);
+  const [isParsing, setIsParsing] = useState(false);
+  const [history, setHistory] = useState<DraftHistoryState>({ entries: [], index: -1 });
+  const [searchState, setSearchState] = useState<SearchState>({ query: '', caseSensitive: false });
+  const [cursorState, setCursorState] = useState<JsonCursorState>({ offset: 0, line: 1, column: 1 });
+  const [liveMessage, setLiveMessage] = useState<string | null>(null);
+  const editorRef = useRef<JsonCodeMirrorHandle | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const historyCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const parseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shouldAnnounceValidationRef = useRef(false);
+  const editorLabelId = useId();
+  const editorHelperId = useId();
+  const editorStatusId = useId();
+  const editorValidationId = useId();
+
+  const clearPendingHistoryCommit = () => {
+    if (historyCommitTimerRef.current) {
+      clearTimeout(historyCommitTimerRef.current);
+      historyCommitTimerRef.current = null;
+    }
   };
 
-  // Toggle node expansion
-  const toggleNode = (path: string) => {
-    const toggleNodeInTree = (nodes: JsonNode[]): JsonNode[] => {
-      return nodes.map(node => {
-        if (node.path === path) {
-          return { ...node, expanded: !node.expanded };
-        }
-        
-        if (node.children && node.children.length > 0) {
-          return { ...node, children: toggleNodeInTree(node.children) };
-        }
-        
-        return node;
-      });
-    };
-    
-    setJsonTree(toggleNodeInTree(jsonTree));
-  };
-  
-  // Expand all nodes
-  const expandAllNodes = () => {
-    // Get total number of nodes to set a reasonable depth limit
-    const countNodes = (nodes: JsonNode[]): number => {
-      let count = nodes.length;
-      nodes.forEach(node => {
-        if (node.children && node.children.length > 0) {
-          count += countNodes(node.children);
-        }
-      });
-      return count;
-    };
-    
-    const totalNodes = countNodes(jsonTree);
-    const maxExpandDepth = totalNodes > 1000 ? 3 : totalNodes > 500 ? 4 : totalNodes > 200 ? 6 : 10;
-    
-    const expandNodes = (nodes: JsonNode[], currentDepth: number = 0): JsonNode[] => {
-      return nodes.map(node => {
-        // Only expand nodes up to the max depth to prevent performance issues
-        const shouldExpand = currentDepth <= maxExpandDepth;
-        
-        if (node.children && node.children.length > 0) {
-          return { 
-            ...node, 
-            expanded: shouldExpand, 
-            children: expandNodes(node.children, currentDepth + 1) 
-          };
-        }
-        return { ...node, expanded: shouldExpand };
-      });
-    };
-    
-    const expandedTree = expandNodes(jsonTree);
-    setJsonTree(expandedTree);
-    
-    // Show a notification if we limited expansion
-    if (totalNodes > 200) {
-      alert(`Large JSON structure detected (${totalNodes} nodes). Expansion limited to ${maxExpandDepth} levels to prevent performance issues.`);
+  const clearPendingParse = () => {
+    if (parseTimerRef.current) {
+      clearTimeout(parseTimerRef.current);
+      parseTimerRef.current = null;
     }
   };
-  
-  // Collapse all nodes
-  const collapseAllNodes = () => {
-    const collapseNodes = (nodes: JsonNode[]): JsonNode[] => {
-      return nodes.map(node => {
-        if (node.children && node.children.length > 0) {
-          return { ...node, expanded: false, children: collapseNodes(node.children) };
-        }
-        return { ...node, expanded: false };
-      });
-    };
-    
-    setJsonTree(collapseNodes(jsonTree));
-  };
 
-  // Focus search input when opened
+  const syncEditorState = useCallback((nextDraft: string, resetHistory = true) => {
+    clearPendingParse();
+    setDraft(nextDraft);
+    setBaselineDraft(nextDraft);
+    setParseState(parseDraft(nextDraft));
+    setIsParsing(false);
+    if (resetHistory) {
+      setHistory({ entries: [nextDraft], index: 0 });
+    }
+  }, []);
+
   useEffect(() => {
-    if (showSearch && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [showSearch]);
-
-  // Search functionality in tree
-  useEffect(() => {
-    if (!searchTerm || !jsonText) {
-      setSearchResults([]);
-      setCurrentSearchResult(0);
+    if (!saveDocument) {
       return;
     }
 
-    const results: number[] = [];
-    let index = -1;
-    let text = jsonText.toLowerCase();
-    const term = searchTerm.toLowerCase();
-
-    while ((index = text.indexOf(term, index + 1)) !== -1) {
-      results.push(index);
+    const nextDraft = stringifyDocument(saveDocument.workingData);
+    if (draft !== baselineDraft) {
+      return;
     }
 
-    setSearchResults(results);
-    setCurrentSearchResult(results.length > 0 ? 1 : 0);
-  }, [searchTerm, jsonText]);
+    clearPendingHistoryCommit();
+    syncEditorState(nextDraft);
+  }, [saveDocument, draft, baselineDraft, syncEditorState]);
+
+  useEffect(() => {
+    return () => {
+      clearPendingHistoryCommit();
+      clearPendingParse();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!liveMessage) {
+      return;
+    }
+
+    const timeout = setTimeout(() => setLiveMessage(null), 2200);
+    return () => clearTimeout(timeout);
+  }, [liveMessage]);
+
+  useEffect(() => {
+    if (!shouldAnnounceValidationRef.current) {
+      return;
+    }
+
+    shouldAnnounceValidationRef.current = false;
+    const validationIssues = validation?.issues ?? [];
+    const errors = validationIssues.filter((issue) => issue.severity === 'error').length;
+    const warnings = validationIssues.filter((issue) => issue.severity === 'warning').length;
+    if (validationIssues.length === 0) {
+      setLiveMessage('Workspace validation is clear after apply.');
+      return;
+    }
+
+    setLiveMessage(`Workspace validation after apply: ${errors} error${errors === 1 ? '' : 's'} and ${warnings} warning${warnings === 1 ? '' : 's'}.`);
+  }, [validation]);
+
+  const handleDraftChange = (nextDraft: string) => {
+    setDraft(nextDraft);
+    setIsParsing(true);
+    clearPendingParse();
+    parseTimerRef.current = setTimeout(() => {
+      setParseState(parseDraft(nextDraft));
+      setIsParsing(false);
+      parseTimerRef.current = null;
+    }, PARSE_DELAY_MS);
+    clearPendingHistoryCommit();
+    historyCommitTimerRef.current = setTimeout(() => {
+      setHistory((current) => pushHistoryEntry(current, nextDraft));
+      historyCommitTimerRef.current = null;
+    }, HISTORY_COMMIT_DELAY_MS);
+  };
 
   const handleFormat = () => {
-    try {
-      const formatted = JSON.stringify(parsed, null, 2);
-      setJsonText(formatted);
-      setLineCount((formatted.match(/\n/g) || []).length + 1);
-      setError(null);
-      
-      // Parse the JSON into a tree structure for the collapsible view
-      parseJsonToTree(parsed);
-    } catch (e) {
-      console.error('Cannot format JSON:', e);
-      setError('Cannot format JSON');
-    }
-  };
-
-  const handleSave = () => {
-    if (isValidJson && unsavedChanges) {
-      try {
-        updateSaveData('', parsed);
-        setUnsavedChanges(false);
-      } catch (e) {
-        console.error('Error saving data:', e);
-        setError('Error saving data');
-      }
-    }
-  };
-
-  // Navigate between search results - display a message for now since we're in tree view
-  const navigateSearch = (direction: 'next' | 'prev') => {
-    if (searchResults.length === 0) return;
-
-    let newIndex;
-    if (direction === 'next') {
-      newIndex = currentSearchResult % searchResults.length;
-      if (newIndex === 0) newIndex = searchResults.length;
-    } else {
-      newIndex = currentSearchResult - 1;
-      if (newIndex === 0) newIndex = searchResults.length;
-    }
-
-    setCurrentSearchResult(newIndex);
-    
-    // In tree view, we just display a message with the current search position
-    alert(`Search result ${newIndex} of ${searchResults.length}\nUse text search to locate this result in the JSON data.`);
-  };
-
-  // Render node value
-  const renderNodeValue = (node: JsonNode) => {
-    // Check if this node is currently being edited
-    if (editingNode === node.path) {
-      return (
-        <input
-          className="tree-node-editor"
-          type={node.type === 'number' ? 'number' : 'text'}
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onKeyDown={(e) => {
-            e.stopPropagation();
-            if (e.key === 'Enter') {
-              saveNodeEdit(node);
-            } else if (e.key === 'Escape') {
-              setEditingNode(null);
-            }
-          }}
-          onBlur={() => saveNodeEdit(node)}
-          autoFocus
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            minWidth: '100px',
-            fontFamily: 'monospace',
-            fontSize: '15px',
-          }}
-        />
-      );
-    }
-    
-    // For non-objects and non-arrays, show editable value
-    if (node.type !== 'object' && node.type !== 'array') {
-      return (
-        <span 
-          className={`json-${node.type} editable-value`}
-          onClick={(e) => {
-            e.stopPropagation();
-            startNodeEdit(node);
-          }}
-          title={`Edit value (${node.type})`}
-        >
-          {node.type === 'string' ? (
-            <>
-              <i className="fa fa-quote-left" style={{ fontSize: '8px', marginRight: '2px', opacity: 0.6 }}></i>
-              <span>{node.value}</span>
-              <i className="fa fa-quote-right" style={{ fontSize: '8px', marginLeft: '2px', opacity: 0.6 }}></i>
-            </>
-          ) : node.type === 'boolean' ? (
-            <span>
-              <i className={`fa fa-${node.value ? 'check' : 'times'}`} style={{ marginRight: '4px' }}></i>
-              {node.value ? 'true' : 'false'}
-            </span>
-          ) : node.type === 'null' ? (
-            <span>
-              <i className="fa fa-ban" style={{ marginRight: '4px', opacity: 0.7 }}></i>
-              null
-            </span>
-          ) : (
-            <span>
-              <i className="fa fa-hashtag" style={{ marginRight: '4px', opacity: 0.7, fontSize: '11px' }}></i>
-              {node.value}
-            </span>
-          )}
-        </span>
-      );
-    }
-    
-    // For objects and arrays, show collapsed/expanded state
-    if (node.type === 'object') {
-      return (
-        <span className="json-object" title={`Object with ${Object.keys(node.value).length} properties`}>
-          {node.expanded 
-            ? <><i className="fa fa-circle-o" style={{ marginRight: '4px', opacity: 0.7 }}></i>{"{}"}</>
-            : <><i className="fa fa-folder-o" style={{ marginRight: '4px' }}></i>{ `{ ${Object.keys(node.value).length} properties }` }</>
-          }
-        </span>
-      );
-    } else if (node.type === 'array') {
-      return (
-        <span className="json-array" title={`Array with ${node.value.length} items`}>
-          {node.expanded 
-            ? <><i className="fa fa-angle-double-right" style={{ marginRight: '4px', opacity: 0.7 }}></i>{"[]"}</> 
-            : <><i className="fa fa-list" style={{ marginRight: '4px' }}></i>{ `[ ${node.value.length} items ]` }</> 
-          }
-        </span>
-      );
-    }
-    return null;
-  };
-  
-  // Start editing a node
-  const startNodeEdit = (node: JsonNode) => {
-    setEditingNode(node.path);
-    
-    // Set initial edit value based on node type
-    if (node.type === 'string') {
-      setEditValue(node.value);
-    } else if (node.type === 'number') {
-      setEditValue(node.value.toString());
-    } else if (node.type === 'boolean') {
-      setEditValue(node.value ? 'true' : 'false');
-    } else if (node.type === 'null') {
-      setEditValue('null');
-    }
-  };
-  
-  // Save node edit
-  const saveNodeEdit = (node: JsonNode) => {
-    let newValue: any = editValue;
-    let isValid = true;
-    
-    // Parse value based on type
-    try {
-      switch (node.type) {
-        case 'string':
-          // Keep as string
-          break;
-        case 'number':
-          newValue = parseFloat(newValue);
-          if (isNaN(newValue)) {
-            isValid = false;
-          }
-          break;
-        case 'boolean':
-          if (newValue.toLowerCase() === 'true') {
-            newValue = true;
-          } else if (newValue.toLowerCase() === 'false') {
-            newValue = false;
-          } else {
-            isValid = false;
-          }
-          break;
-        case 'null':
-          if (newValue.toLowerCase() === 'null') {
-            newValue = null;
-          } else {
-            isValid = false;
-          }
-          break;
-      }
-    } catch (e) {
-      isValid = false;
-    }
-    
-    if (isValid) {
-      // Temporarily prevent tree rebuilds during auto-update
-      setPreventTreeRebuild(true);
-      
-      // Update the node value
-      updateNodeValue(node.path, newValue);
-      
-      // Allow tree rebuilds again after a short delay
-      setTimeout(() => {
-        setPreventTreeRebuild(false);
-      }, 50);
-    } else {
-      alert(`Invalid value for ${node.type}`);
-    }
-    
-    // Exit edit mode
-    setEditingNode(null);
-  };
-  
-  // Update node value in the tree and JSON
-  const updateNodeValue = (path: string, newValue: any) => {
-    // Function to recursively update the node in the tree
-    const updateNodeInTree = (nodes: JsonNode[]): JsonNode[] => {
-      return nodes.map(node => {
-        if (node.path === path) {
-          return { ...node, value: newValue };
-        }
-        
-        if (node.children && node.children.length > 0) {
-          return { ...node, children: updateNodeInTree(node.children) };
-        }
-        
-        return node;
-      });
-    };
-    
-    // Update the tree directly
-    const updatedTree = updateNodeInTree(jsonTree);
-    setJsonTree(updatedTree);
-    
-    // Update the JSON object
-    const updateJsonObject = (obj: any, path: string, value: any) => {
-      // Handle root level properties
-      if (!path.includes('.') && !path.includes('[')) {
-        obj[path] = value;
-        return obj;
-      }
-      
-      // Handle nested properties
-      const parts = path.split('.');
-      let current = obj;
-      
-      for (let i = 0; i < parts.length - 1; i++) {
-        let part = parts[i];
-        
-        // Handle array indices in path like "array[0]"
-        if (part.includes('[')) {
-          const arrayName = part.split('[')[0];
-          const indexStr = part.split('[')[1].split(']')[0];
-          const index = parseInt(indexStr, 10);
-          
-          current = current[arrayName][index];
-        } else {
-          current = current[part];
-        }
-      }
-      
-      let lastPart = parts[parts.length - 1];
-      
-      // Handle array indices in the last part
-      if (lastPart.includes('[')) {
-        const arrayName = lastPart.split('[')[0];
-        const indexStr = lastPart.split('[')[1].split(']')[0];
-        const index = parseInt(indexStr, 10);
-        
-        current[arrayName][index] = value;
-      } else {
-        current[lastPart] = value;
-      }
-      
-      return obj;
-    };
-    
-    try {
-      // Clone the parsed JSON to avoid reference issues
-      const updatedJson = JSON.parse(JSON.stringify(parsed));
-      
-      // Update the value in the JSON
-      const result = updateJsonObject(updatedJson, path, newValue);
-      
-      // Update the state
-      setParsed(result);
-      
-      // Update the text but don't trigger tree rebuild
-      setJsonText(JSON.stringify(result, null, 2));
-      
-      setUnsavedChanges(true);
-      
-      // Auto update if enabled
-      if (autoUpdate) {
-        // Temporarily prevent tree rebuilds during auto-update
-        setPreventTreeRebuild(true);
-        updateSaveData('', result);
-        setUnsavedChanges(false);
-        
-        // Allow tree rebuilds again after a short delay
-        setTimeout(() => {
-          setPreventTreeRebuild(false);
-        }, 50);
-      }
-    } catch (e) {
-      console.error('Error updating JSON:', e);
-    }
-  };
-
-  // Add a new property to an object or item to an array
-  const addNodeProperty = (parentPath: string, isArray: boolean) => {
-    // Prompt for key name if object, or use array index if array
-    let key = '';
-    if (!isArray) {
-      key = prompt('Enter property name:');
-      if (!key) return;
-    }
-    
-    // Prompt for value type
-    const typeOptions = ['string', 'number', 'boolean', 'null', 'object', 'array'];
-    const type = prompt(`Select value type (${typeOptions.join(', ')}):`, 'string');
-    if (!type || !typeOptions.includes(type)) return;
-    
-    // Get default value based on type
-    let value;
-    switch (type) {
-      case 'string':
-        value = prompt('Enter string value:', '');
-        break;
-      case 'number':
-        const numValue = prompt('Enter number value:', '0');
-        value = numValue ? parseFloat(numValue) : 0;
-        if (isNaN(value)) value = 0;
-        break;
-      case 'boolean':
-        value = confirm('Select boolean value (OK for true, Cancel for false)');
-        break;
-      case 'null':
-        value = null;
-        break;
-      case 'object':
-        value = {};
-        break;
-      case 'array':
-        value = [];
-        break;
-    }
-    
-    // Update the JSON structure
-    try {
-      // Clone the parsed JSON
-      const updatedJson = JSON.parse(JSON.stringify(parsed));
-      
-      // Navigate to the parent node
-      let parent = updatedJson;
-      if (parentPath) {
-        const parts = parentPath.split('.');
-        
-        for (const part of parts) {
-          // Handle array indices in path
-          if (part.includes('[')) {
-            const arrayName = part.split('[')[0];
-            const indexStr = part.split('[')[1].split(']')[0];
-            const index = parseInt(indexStr, 10);
-            
-            parent = parent[arrayName][index];
-          } else {
-            parent = parent[part];
-          }
-        }
-      }
-      
-      // Add the new property
-      if (isArray) {
-        parent.push(value);
-      } else {
-        parent[key] = value;
-      }
-      
-      // Update the state
-      setParsed(updatedJson);
-      setJsonText(JSON.stringify(updatedJson, null, 2));
-      
-      // Rebuild the tree while preserving expansion state
-      parseJsonToTree(updatedJson);
-      
-      setUnsavedChanges(true);
-      
-      // Auto update if enabled
-      if (autoUpdate) {
-        // Temporarily prevent tree rebuilds during auto-update
-        setPreventTreeRebuild(true);
-        updateSaveData('', updatedJson);
-        setUnsavedChanges(false);
-        
-        // Allow tree rebuilds again after a short delay
-        setTimeout(() => {
-          setPreventTreeRebuild(false);
-        }, 50);
-      }
-    } catch (e) {
-      console.error('Error updating JSON:', e);
-      alert('Error adding property: ' + e);
-    }
-  };
-  
-  // Remove a node from the JSON structure
-  const removeNode = (nodePath: string) => {
-    if (!confirm('Are you sure you want to delete this node?')) {
+    if (!parseState.parsed) {
       return;
     }
-    
+
+    const formattedDraft = stringifyDocument(parseState.parsed);
+    clearPendingHistoryCommit();
+    clearPendingParse();
+    setDraft(formattedDraft);
+    setParseState(parseDraft(formattedDraft));
+    setIsParsing(false);
+    setHistory((current) => pushHistoryEntry(current, formattedDraft));
+    setLiveMessage('Draft formatted.');
+  };
+
+  const handleReset = () => {
+    if (!baselineDraft) {
+      return;
+    }
+
+    clearPendingHistoryCommit();
+    clearPendingParse();
+    setDraft(baselineDraft);
+    setParseState(parseDraft(baselineDraft));
+    setIsParsing(false);
+    setHistory({ entries: [baselineDraft], index: 0 });
+    setLiveMessage('Draft reset to the current workspace snapshot.');
+  };
+
+  const handleApply = () => {
+    if (!parseState.isRootObject || !parseState.parsed) {
+      return;
+    }
+
+    const committedDraft = stringifyDocument(parseState.parsed);
+    clearPendingHistoryCommit();
+    clearPendingParse();
+    shouldAnnounceValidationRef.current = true;
+    replaceSaveData(parseState.parsed as SaveDataRecord);
+    setDraft(committedDraft);
+    setBaselineDraft(committedDraft);
+    setParseState(parseDraft(committedDraft));
+    setIsParsing(false);
+    setHistory({ entries: [committedDraft], index: 0 });
+    setLiveMessage('Draft applied to the workspace.');
+  };
+
+  const handleUndo = () => {
+    if (history.index <= 0) {
+      return;
+    }
+
+    clearPendingHistoryCommit();
+    clearPendingParse();
+    const nextIndex = history.index - 1;
+    const nextDraft = history.entries[nextIndex];
+    setHistory((current) => ({ ...current, index: nextIndex }));
+    setDraft(nextDraft);
+    setParseState(parseDraft(nextDraft));
+    setIsParsing(false);
+    setLiveMessage('Local undo applied.');
+  };
+
+  const handleRedo = () => {
+    if (history.index === -1 || history.index >= history.entries.length - 1) {
+      return;
+    }
+
+    clearPendingHistoryCommit();
+    clearPendingParse();
+    const nextIndex = history.index + 1;
+    const nextDraft = history.entries[nextIndex];
+    setHistory((current) => ({ ...current, index: nextIndex }));
+    setDraft(nextDraft);
+    setParseState(parseDraft(nextDraft));
+    setIsParsing(false);
+    setLiveMessage('Local redo applied.');
+  };
+
+  const handleCopyDraft = async () => {
     try {
-      // Clone the parsed JSON
-      const updatedJson = JSON.parse(JSON.stringify(parsed));
-      
-      // Handle root level properties
-      if (!nodePath.includes('.') && !nodePath.includes('[')) {
-        delete updatedJson[nodePath];
-      } else {
-        // Handle nested properties
-        const parts = nodePath.split('.');
-        let parent = updatedJson;
-        
-        // Navigate to the parent object
-        for (let i = 0; i < parts.length - 1; i++) {
-          let part = parts[i];
-          
-          // Handle array indices in path
-          if (part.includes('[')) {
-            const arrayName = part.split('[')[0];
-            const indexStr = part.split('[')[1].split(']')[0];
-            const index = parseInt(indexStr, 10);
-            
-            parent = parent[arrayName][index];
-          } else {
-            parent = parent[part];
-          }
-        }
-        
-        // Get the key or index to remove
-        let lastPart = parts[parts.length - 1];
-        
-        // Handle array indices in the last part
-        if (lastPart.includes('[')) {
-          const arrayName = lastPart.split('[')[0];
-          const indexStr = lastPart.split('[')[1].split(']')[0];
-          const index = parseInt(indexStr, 10);
-          
-          parent[arrayName].splice(index, 1);
-        } else {
-          delete parent[lastPart];
-        }
-      }
-      
-      // Update the state
-      setParsed(updatedJson);
-      setJsonText(JSON.stringify(updatedJson, null, 2));
-      
-      // Rebuild the tree while preserving expansion state
-      parseJsonToTree(updatedJson);
-      
-      setUnsavedChanges(true);
-      
-      // Auto update if enabled
-      if (autoUpdate) {
-        // Temporarily prevent tree rebuilds during auto-update
-        setPreventTreeRebuild(true);
-        updateSaveData('', updatedJson);
-        setUnsavedChanges(false);
-        
-        // Allow tree rebuilds again after a short delay
-        setTimeout(() => {
-          setPreventTreeRebuild(false);
-        }, 50);
-      }
-    } catch (e) {
-      console.error('Error removing node:', e);
-      alert('Error removing node: ' + e);
+      const copied = await copyTextToClipboard(draft);
+      setLiveMessage(copied ? 'Draft copied to clipboard.' : 'Copy is unavailable in this browser.');
+    } catch {
+      setLiveMessage('Copy failed.');
     }
   };
-  
-  // Render tree node
-  const renderTreeNode = (node: JsonNode) => {
-    const hasChildren = node.children && node.children.length > 0;
-    const isArray = node.type === 'array';
-    const isObject = node.type === 'object';
-    
-    // Calculate indentation - limit to a maximum to avoid excessive horizontal scrolling
-    const maxIndent = 8; // Maximum depth levels before reducing indentation
-    const baseIndent = 20; // Base indentation in pixels
-    const reducedIndent = 10; // Reduced indentation for deep levels
-    
-    let leftMargin;
-    if (node.depth <= maxIndent) {
-      leftMargin = node.depth * baseIndent;
-    } else {
-      // Use reduced indentation for deeper levels
-      leftMargin = (maxIndent * baseIndent) + ((node.depth - maxIndent) * reducedIndent);
+
+  const handleExportDraft = () => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return;
     }
-    
-    return (
-      <div className="json-tree-node" key={node.path} style={{ marginLeft: `${leftMargin}px` }}>
-        <div 
-          className="node-content"
-          onClick={(e) => {
-            // Only toggle if clicking directly on the node content, not on child elements
-            if (e.target === e.currentTarget) {
-              if (hasChildren) toggleNode(node.path);
-            }
-          }}
-          title={node.path}
-        >
-          {hasChildren && (
-            <span 
-              className={`toggle-icon ${node.expanded ? 'expanded' : 'collapsed'}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleNode(node.path);
-              }}
-              title={node.expanded ? 'Collapse' : 'Expand'}
-            >
-              <i className={`fa ${node.expanded ? 'fa-chevron-down' : 'fa-chevron-right'}`}></i>
-            </span>
-          )}
-          
-          <span 
-            className="node-key"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (hasChildren) toggleNode(node.path);
-            }}
-            title={`Key: ${node.key}`}
-          >
-            {node.key}:
-          </span>
-          
-          {renderNodeValue(node)}
-          
-          <div className="node-actions">
-            {(isObject || isArray) && node.expanded && (
-              <span 
-                className="action-icon add-icon" 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  addNodeProperty(node.path, isArray);
-                }}
-                title={isArray ? "Add item to array" : "Add property to object"}
-              >
-                <i className="fa fa-plus-circle"></i>
-              </span>
-            )}
-            <span 
-              className="action-icon remove-icon" 
-              onClick={(e) => {
-                e.stopPropagation();
-                removeNode(node.path);
-              }}
-              title={`Remove ${node.key}`}
-            >
-              <i className="fa fa-trash"></i>
-            </span>
-          </div>
-        </div>
-        
-        {node.expanded && hasChildren && (
-          <div className="node-children">
-            {node.children?.map(childNode => renderTreeNode(childNode))}
-          </div>
-        )}
-      </div>
-    );
+
+    const blob = new Blob([draft], { type: 'application/json;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `antimatter-dimensions-${saveDocument?.sourceType ?? 'save'}-draft.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    setLiveMessage('Draft exported as JSON.');
   };
-  
-  // Render JSON tree view
-  const renderJsonTree = () => {
-    return (
-      <div className="json-tree-container">
-        {jsonTree.map(node => renderTreeNode(node))}
-      </div>
-    );
+
+  const handleJumpToError = () => {
+    if (parseState.errorOffset === null) {
+      return;
+    }
+
+    editorRef.current?.jumpToOffset(parseState.errorOffset);
+    setLiveMessage('Jumped to the parse error location.');
   };
+
+  const handleFindNext = () => {
+    if (!searchState.query) {
+      searchInputRef.current?.focus();
+      return;
+    }
+
+    if (searchMatchCount === 0) {
+      setLiveMessage('No search matches found.');
+      return;
+    }
+
+    const nextIndex = currentSearchMatch > 0 ? currentSearchMatch % searchMatchCount : 0;
+    jumpToSearchMatch(nextIndex);
+  };
+
+  const handleFindPrevious = () => {
+    if (!searchState.query) {
+      searchInputRef.current?.focus();
+      return;
+    }
+
+    if (searchMatchCount === 0) {
+      setLiveMessage('No search matches found.');
+      return;
+    }
+
+    const previousIndex = currentSearchMatch > 1 ? currentSearchMatch - 2 : searchMatchCount - 1;
+    jumpToSearchMatch(previousIndex);
+  };
+
+  const focusSearchInput = () => {
+    searchInputRef.current?.focus();
+    searchInputRef.current?.select();
+  };
+
+  const hasLocalChanges = draft !== baselineDraft;
+  const normalizedSearchQuery = searchState.query.trim();
+  const isEditorInvalid = Boolean(parseState.errorMessage) || (!isParsing && !parseState.isRootObject);
+  const canApply = !isParsing && parseState.isRootObject && hasLocalChanges;
+  const lineCount = useMemo(() => draft.split('\n').length, [draft]);
+  const searchMatches = useMemo(
+    () => countOccurrences(draft, normalizedSearchQuery, searchState.caseSensitive),
+    [draft, normalizedSearchQuery, searchState.caseSensitive],
+  );
+  const searchMatchCount = searchMatches.length;
+  const currentSearchMatch = useMemo(() => {
+    if (!normalizedSearchQuery || searchMatches.length === 0) {
+      return 0;
+    }
+
+    const selectedMatch = searchMatches.findIndex((offset) => {
+      const endOffset = offset + normalizedSearchQuery.length;
+      return cursorState.offset >= offset && cursorState.offset <= endOffset;
+    });
+
+    if (selectedMatch >= 0) {
+      return selectedMatch + 1;
+    }
+
+    const upcomingMatch = searchMatches.findIndex((offset) => offset >= cursorState.offset);
+    return upcomingMatch >= 0 ? upcomingMatch + 1 : searchMatches.length;
+  }, [cursorState.offset, searchMatches, normalizedSearchQuery]);
+
+  const jumpToSearchMatch = useCallback((matchIndex: number) => {
+    if (!normalizedSearchQuery || searchMatches.length === 0) {
+      return false;
+    }
+
+    const boundedIndex = Math.max(0, Math.min(matchIndex, searchMatches.length - 1));
+    const matchOffset = searchMatches[boundedIndex];
+    editorRef.current?.selectRange(matchOffset, matchOffset + normalizedSearchQuery.length);
+    setLiveMessage(`Search match ${boundedIndex + 1} of ${searchMatches.length}.`);
+    return true;
+  }, [searchMatches, normalizedSearchQuery]);
+
+  const validationSummary = useMemo(
+    () => summarizeValidation(validation?.issues ?? []),
+    [validation],
+  );
+  const validationIssues = validation?.issues ?? [];
+  const visibleValidationIssues = validationIssues.slice(0, 8);
+  const hiddenValidationIssueCount = Math.max(validationIssues.length - visibleValidationIssues.length, 0);
+  const statusMessage = isParsing
+    ? 'Parsing draft…'
+    : parseState.errorMessage
+    ? parseState.errorMessage
+    : !parseState.isRootObject
+      ? 'JSON root must be an object to match the save document model.'
+      : hasLocalChanges
+        ? 'Draft parsed successfully. Apply to sync the JSON document back to the workspace.'
+        : 'Draft matches the current workspace snapshot.';
 
   if (!isActive) {
     return null;
   }
 
-  if (!modifiedSaveData) {
+  if (!saveDocument) {
     return (
-      <div className="empty-editor-message">
-        <p>Decrypt a save to view and edit its JSON content.</p>
+      <div className="editor-empty-state compact">
+        <h3>JSON workspace is unavailable</h3>
+        <p>Decode a save before opening the expert editor.</p>
       </div>
     );
   }
 
   return (
-    <div className="json-editor-container">
+    <div className="json-editor-shell" aria-label="Expert JSON workspace">
       <div className="json-editor-toolbar">
-        <div className="editor-stats">
-          <span>Lines: {lineCount}</span>
-          <span>Characters: {jsonText.length}</span>
-          <span className={isValidJson ? "status-valid" : "status-invalid"}>
-            {isValidJson ? 'Valid JSON' : 'Invalid JSON'}
-          </span>
-          {searchResults.length > 0 && (
-            <span>
-              Results: {searchResults.length} matches
-            </span>
-          )}
-          {unsavedChanges && !autoUpdate && (
-            <span className="status-unsaved">
-              <i className="fa fa-exclamation-circle"></i>
-              Unsaved changes
-            </span>
-          )}
+        <div className="json-editor-heading">
+          <h3 id={editorLabelId}>Expert JSON workspace</h3>
+          <p>Edit the full save document locally, then commit the parsed result back to the centralized store.</p>
         </div>
-        <div className="editor-actions">
-          <button
-            onClick={() => setShowSearch(true)}
-            className="btn secondary-outline"
-            title="Search (Ctrl+F)"
-          >
-            <i className="fa fa-search"></i>
-            Search
-          </button>
-          
-          <button
-            onClick={expandAllNodes}
-            className="btn secondary-outline"
-            title="Expand All Nodes"
-          >
-            <i className="fa fa-plus-square-o"></i>
-            Expand All
+        <div className="json-editor-actions">
+          <button type="button" className="btn secondary" onClick={handleUndo} disabled={history.index <= 0}>
+            <i className="fa fa-arrow-left" aria-hidden="true"></i> Undo
           </button>
           <button
-            onClick={collapseAllNodes}
-            className="btn secondary-outline"
-            title="Collapse All Nodes"
+            type="button"
+            className="btn secondary"
+            onClick={handleRedo}
+            disabled={history.index === -1 || history.index >= history.entries.length - 1}
           >
-            <i className="fa fa-minus-square-o"></i>
-            Collapse All
+            <i className="fa fa-arrow-right" aria-hidden="true"></i> Redo
           </button>
-          
-          <div className="auto-update-toggle">
-            <label>
-              <input 
-                type="checkbox" 
-                checked={autoUpdate} 
-                onChange={() => setAutoUpdate(!autoUpdate)}
-              />
-              Auto-update
-            </label>
-          </div>
-          
-          <button
-            onClick={handleFormat}
-            className="btn secondary-outline"
-            title="Format JSON (Ctrl+Shift+F)"
-          >
-            <i className="fa fa-indent"></i>
-            Format
+          <button type="button" className="btn secondary" onClick={handleFormat} disabled={!parseState.parsed}>
+            <i className="fa fa-align-left" aria-hidden="true"></i> Format
           </button>
-          
-          {unsavedChanges && !autoUpdate && (
-            <button
-              onClick={handleSave}
-              className="btn primary"
-              title="Save changes (Ctrl+S)"
-            >
-              <i className="fa fa-save"></i>
-              Save
-            </button>
-          )}
+          <button type="button" className="btn secondary" onClick={handleReset}>
+            <i className="fa fa-undo" aria-hidden="true"></i> Reset
+          </button>
+          <button type="button" className="btn secondary" onClick={handleCopyDraft}>
+            <i className="fa fa-copy" aria-hidden="true"></i> Copy
+          </button>
+          <button type="button" className="btn secondary" onClick={handleExportDraft}>
+            <i className="fa fa-download" aria-hidden="true"></i> Export
+          </button>
+          <button type="button" className="btn primary" onClick={handleApply} disabled={!canApply}>
+            <i className="fa fa-save" aria-hidden="true"></i> Apply to workspace
+          </button>
         </div>
       </div>
 
-      {showSearch && (
-        <div className="search-bar">
+      <div className="json-editor-meta">
+        <span className={`status-chip ${hasLocalChanges ? 'warning' : 'success'}`}>
+          {hasLocalChanges ? 'Local changes pending' : 'Draft matches workspace'}
+        </span>
+        <span className={`status-chip ${isParsing ? 'neutral' : isEditorInvalid ? 'danger' : 'success'}`}>
+          {isParsing ? 'Parsing draft' : isEditorInvalid ? 'JSON invalid' : 'JSON valid'}
+        </span>
+        <span className="status-chip neutral">{lineCount} lines</span>
+        <span className="status-chip neutral">Ln {cursorState.line}, Col {cursorState.column}</span>
+        <span className="status-chip neutral">
+          {searchMatchCount > 0 ? `${currentSearchMatch}/${searchMatchCount} matches` : 'Search idle'}
+        </span>
+      </div>
+
+      <div className="json-editor-search" role="search" aria-label="Search in JSON draft">
+        <label className="json-editor-search__label" htmlFor="json-editor-search-input">
+          Find in draft
+        </label>
+        <input
+          ref={searchInputRef}
+          id="json-editor-search-input"
+          className="json-editor-search__input"
+          type="search"
+          value={searchState.query}
+          placeholder="Search keys or values"
+          onChange={(event) => {
+            setSearchState((current) => ({ ...current, query: event.target.value }));
+          }}
+        />
+        <label className="json-editor-search__toggle">
           <input
-            ref={searchInputRef}
-            type="text"
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                navigateSearch('next');
-              }
-              if (e.key === 'Escape') {
-                setShowSearch(false);
-              }
+            type="checkbox"
+            checked={searchState.caseSensitive}
+            onChange={(event) => {
+              setSearchState((current) => ({ ...current, caseSensitive: event.target.checked }));
             }}
           />
-          <span className="search-status">
-            {searchResults.length > 0 ? `${searchResults.length} matches found` : 'No matches'}
-          </span>
-          <button
-            onClick={() => navigateSearch('prev')}
-            className="btn secondary-outline"
-            disabled={searchResults.length === 0}
-            title="Previous match (Shift+F3)"
-          >
-            <i className="fa fa-chevron-up"></i>
-          </button>
-          <button
-            onClick={() => navigateSearch('next')}
-            className="btn secondary-outline"
-            disabled={searchResults.length === 0}
-            title="Next match (F3)"
-          >
-            <i className="fa fa-chevron-down"></i>
-          </button>
-          <button
-            onClick={() => setShowSearch(false)}
-            className="btn secondary-outline"
-          >
-            <i className="fa fa-times"></i>
-          </button>
-        </div>
-      )}
-
-      {error && (
-        <div className="json-error">
-          <i className="fa fa-exclamation-triangle"></i>
-          {error}
-        </div>
-      )}
-
-      <div className="editor-content">
-        <div className="json-tree-view">
-          {renderJsonTree()}
-        </div>
+          Case sensitive
+        </label>
+        <span className="json-editor-search__status">
+          {searchState.query
+            ? (searchMatchCount > 0 ? `${currentSearchMatch} of ${searchMatchCount}` : 'No matches')
+            : 'Enter a term to search the draft'}
+        </span>
+        <button
+          type="button"
+          className="btn secondary"
+          onClick={handleFindPrevious}
+          disabled={!searchState.query || searchMatchCount === 0}
+          aria-label="Go to the previous search result"
+        >
+          <i className="fa fa-angle-up" aria-hidden="true"></i>
+        </button>
+        <button
+          type="button"
+          className="btn secondary"
+          onClick={handleFindNext}
+          disabled={!searchState.query || searchMatchCount === 0}
+          aria-label="Go to the next search result"
+        >
+          <i className="fa fa-angle-down" aria-hidden="true"></i>
+        </button>
       </div>
+
+      <div className="json-editor-surface">
+        <JsonCodeMirror
+          ref={editorRef}
+          value={draft}
+          searchQuery={searchState.query}
+          caseSensitive={searchState.caseSensitive}
+          invalid={isEditorInvalid}
+          describedBy={`${editorHelperId} ${editorStatusId}${validationIssues.length > 0 ? ` ${editorValidationId}` : ''}`}
+          onChange={handleDraftChange}
+          onCursorChange={setCursorState}
+          onRequestSearchFocus={focusSearchInput}
+          onApplyShortcut={handleApply}
+          onFormatShortcut={handleFormat}
+          onResetShortcut={handleReset}
+          onUndoShortcut={handleUndo}
+          onRedoShortcut={handleRedo}
+          onNextSearchShortcut={handleFindNext}
+          onPreviousSearchShortcut={handleFindPrevious}
+        />
+      </div>
+
+      <p id={editorHelperId} className="json-editor-helper">
+        This mode is commit-based: changes stay local until you click Apply to workspace.
+      </p>
+
+      <div
+        id={editorStatusId}
+        className={`json-editor-status-block${parseState.errorMessage ? ' is-error' : ''}`}
+        role={parseState.errorMessage ? 'alert' : 'status'}
+      >
+        <div className="json-editor-status-block__summary">
+          <span>{statusMessage}</span>
+          {parseState.errorLine !== null && parseState.errorColumn !== null && (
+            <span className="json-editor-status-block__location">
+              Line {parseState.errorLine}, column {parseState.errorColumn}
+            </span>
+          )}
+        </div>
+        {parseState.errorOffset !== null && (
+          <button type="button" className="btn secondary" onClick={handleJumpToError}>
+            <i className="fa fa-crosshairs" aria-hidden="true"></i> Jump to error
+          </button>
+        )}
+      </div>
+
+      <div className="sr-only" aria-live="polite">
+        {liveMessage ?? ''}
+      </div>
+
+      {validationIssues.length > 0 && (
+        <div className="workflow-list-block json-validation-summary" id={editorValidationId}>
+          <h3>Workspace validation after commit</h3>
+          <div className="json-validation-summary__meta">
+            <span className="status-chip danger">{validationSummary.errors.length} errors</span>
+            <span className="status-chip warning">{validationSummary.warnings.length} warnings</span>
+            <span className="status-chip neutral">{validationSummary.topPaths.length} hot spots</span>
+          </div>
+
+          {validationSummary.topPaths.length > 0 && (
+            <ul className="json-validation-summary__paths">
+              {validationSummary.topPaths.map((item) => (
+                <li key={item.path}>
+                  <span className="field-path-badge">{item.count}</span>
+                  <span className="issue-path">{item.path}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <ul className="workflow-list json-validation-summary__issues">
+            {visibleValidationIssues.map((issue) => (
+              <li key={`${issue.code}-${issue.path ?? issue.message}`}>
+                <span className={`issue-severity-pill ${issue.severity}`}>{issue.severity.toUpperCase()}</span>
+                <span>{issue.message}</span>
+                {issue.path && <span className="issue-path">{issue.path}</span>}
+              </li>
+            ))}
+          </ul>
+
+          {hiddenValidationIssueCount > 0 && (
+            <p className="json-editor-helper">
+              {hiddenValidationIssueCount} additional validation issue{hiddenValidationIssueCount > 1 ? 's' : ''} hidden for brevity.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 };
 
-export default JsonEditorComponent; 
+export default JsonEditor;

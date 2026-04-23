@@ -1,5 +1,4 @@
 @charset "UTF-8";
-/* Main SCSS file */
 /* Reset CSS */
 /* Normalize box model for all elements */
 *,
@@ -14,7 +13,8 @@
 html {
   font-size: 16px;
   line-height: 1.5;
-  text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+       text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -92,7 +92,8 @@ table {
 
 html {
   scroll-behavior: smooth;
-  text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+       text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -145,7 +146,8 @@ textarea {
 }
 
 a:not([class]) {
-  text-decoration-skip-ink: auto;
+  -webkit-text-decoration-skip: ink;
+          text-decoration-skip-ink: auto;
 }
 
 ul[role=list], ol[role=list] {
@@ -2613,11 +2615,14 @@ button.ghost:hover {
   border-radius: 6px;
   border: 1px solid var(--border-color);
   transition: box-shadow 0.2s ease-in-out;
-  overflow: hidden;
 }
 .card:hover, .changelog-card:hover,
 .github-card:hover, .info-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+.card, .changelog-card,
+.github-card, .info-card {
+  overflow: hidden;
 }
 .card .card-header, .changelog-card .card-header,
 .github-card .card-header, .info-card .card-header {
@@ -2887,7 +2892,9 @@ button.ghost:hover {
   box-shadow: 0 0 0 2px var(--primary-color-light);
 }
 .form-group select {
-  appearance: none;
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
@@ -2929,10 +2936,6 @@ button.ghost:hover {
   background-color: var(--input-bg);
   color: var(--input-text);
   transition: border-color 0.2s ease-in-out;
-  font-family: monospace;
-  min-height: 150px;
-  padding: 1rem;
-  resize: vertical;
 }
 .save-textarea:focus {
   border-color: var(--input-focus-border);
@@ -2942,6 +2945,12 @@ button.ghost:hover {
 .save-textarea:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+.save-textarea {
+  font-family: monospace;
+  min-height: 150px;
+  padding: 1rem;
+  resize: vertical;
 }
 @media (max-width: 576px) {
   .save-textarea {
@@ -2962,6 +2971,10 @@ button.ghost:hover {
 }
 .save-textarea::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
+}
+.save-textarea:-moz-read-only {
+  background-color: var(--input-readonly-bg);
+  cursor: default;
 }
 .save-textarea:read-only {
   background-color: var(--input-readonly-bg);
@@ -3006,7 +3019,9 @@ button.ghost:hover {
 }
 .form-check label {
   margin-bottom: 0;
-  user-select: none;
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
 }
 
 .input-group {
@@ -3081,10 +3096,6 @@ button.ghost:hover {
   background-color: var(--input-bg);
   color: var(--input-text);
   transition: border-color 0.2s ease-in-out;
-  font-family: monospace;
-  min-height: 300px;
-  padding: 1rem;
-  resize: vertical;
 }
 .code-editor:focus {
   border-color: var(--input-focus-border);
@@ -3094,6 +3105,12 @@ button.ghost:hover {
 .code-editor:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+.code-editor {
+  font-family: monospace;
+  min-height: 300px;
+  padding: 1rem;
+  resize: vertical;
 }
 .code-editor::-webkit-scrollbar {
   width: 8px;
@@ -3111,9 +3128,6 @@ button.ghost:hover {
   background: var(--scrollbar-thumb-hover);
 }
 
-.big-number-input {
-  margin-bottom: 1rem;
-}
 .big-number-input .input-label {
   display: block;
   margin-bottom: 0.5rem;
@@ -3276,13 +3290,14 @@ button.ghost:hover {
   opacity: 0;
   transform: translateY(10px);
   transition: opacity 0.3s ease, transform 0.3s ease;
-  /* Ensure JSON editor fits properly within tab */
-  /* Style for nested content within tabs */
 }
 .tab-pane.active {
   display: block;
   opacity: 1;
   transform: translateY(0);
+}
+.tab-pane {
+  /* Ensure JSON editor fits properly within tab */
 }
 .tab-pane .json-editor-container {
   margin-top: 1rem;
@@ -3296,6 +3311,9 @@ button.ghost:hover {
 .tab-pane .json-editor-container .editor-content .editor-pane.split-view .json-textarea {
   height: 100%;
   max-height: 400px;
+}
+.tab-pane {
+  /* Style for nested content within tabs */
 }
 .tab-pane.active .editor-container {
   height: auto;
@@ -3521,7 +3539,6 @@ button.ghost:hover {
   padding: 1.5rem;
   height: 100%;
   overflow-y: auto;
-  flex: 1;
 }
 .section-content::-webkit-scrollbar {
   width: 8px;
@@ -3537,6 +3554,9 @@ button.ghost:hover {
 }
 .section-content::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
+}
+.section-content {
+  flex: 1;
 }
 .section-content .section-pane {
   display: none;
@@ -3571,7 +3591,6 @@ button.ghost:hover {
 /* Dimensions section specific styling */
 .dimensions-grid {
   display: grid;
-  gap: 1rem;
 }
 
 .dimension-row {
@@ -3867,9 +3886,6 @@ button.ghost:hover {
   height: auto;
   animation: fadeIn 0.3s ease;
 }
-.section-pane .form-group {
-  margin-bottom: 1.5rem;
-}
 .section-pane .form-group label {
   display: block;
   margin-bottom: 0.5rem;
@@ -4057,13 +4073,13 @@ button.ghost:hover {
 .dimensions-grid .dimension-group {
   background-color: var(--card-bg-alt);
   border-radius: 8px;
-  padding: 1rem;
+  padding: 0.75rem;
   border: 1px solid var(--border-color);
 }
 .dimensions-grid .dimension-group h4 {
   margin-top: 0;
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.35rem;
   border-bottom: 1px solid var(--border-color);
   color: var(--primary-color);
   font-weight: 600;
@@ -4224,7 +4240,8 @@ button.ghost:hover {
 }
 
 input[type=checkbox] {
-  appearance: none;
+  -moz-appearance: none;
+       appearance: none;
   -webkit-appearance: none;
   width: 18px;
   height: 18px;
@@ -4258,7 +4275,8 @@ input[type=checkbox]:focus {
 }
 
 input[type=radio] {
-  appearance: none;
+  -moz-appearance: none;
+       appearance: none;
   -webkit-appearance: none;
   width: 18px;
   height: 18px;
@@ -4692,7 +4710,9 @@ input[type=radio]:focus {
 
 /* Version tabs */
 .changelog-tab {
-  appearance: none;
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
   background: none;
   border: none;
   padding: 0.5rem 1rem;
@@ -4804,6 +4824,7 @@ input[type=radio]:focus {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 1.25rem;
+  height: -moz-fit-content;
   height: fit-content;
   display: flex;
   flex-direction: column;
@@ -5266,7 +5287,6 @@ body.modal-open {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   position: relative;
-  /* Liste des changements */
 }
 .category-section::before {
   content: "";
@@ -5299,7 +5319,6 @@ body.modal-open {
   gap: 0.9rem;
   padding: 0.9rem 1.2rem;
   border-bottom: 1px solid var(--border-color);
-  /* Styles spécifiques par catégorie */
 }
 .category-section .category-header i {
   width: 34px;
@@ -5325,6 +5344,9 @@ body.modal-open {
   font-size: 0.85rem;
   font-weight: 600;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+.category-section .category-header {
+  /* Styles spécifiques par catégorie */
 }
 .category-section .category-header.success {
   color: var(--success-color);
@@ -5373,6 +5395,9 @@ body.modal-open {
 .category-section .category-header.info .change-count {
   color: var(--info-color);
   background-color: rgba(var(--info-color-rgb), 0.1);
+}
+.category-section {
+  /* Liste des changements */
 }
 .category-section .changes-list {
   list-style: none;
@@ -5627,7 +5652,9 @@ body.modal-open {
   max-height: calc(100vh - 200px);
 }
 .json-editor-container .editor-content .line-numbers {
-  user-select: none;
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
   padding: 12px 8px 12px 0;
   background-color: var(--bg-color-secondary);
   border-right: 1px solid var(--border-color);
@@ -5659,7 +5686,9 @@ body.modal-open {
   background-color: var(--bg-color);
   color: var(--text-color);
   line-height: 1.5;
-  tab-size: 2;
+  -moz-tab-size: 2;
+    -o-tab-size: 2;
+       tab-size: 2;
   overflow-y: auto;
   min-height: 600px;
 }
@@ -5939,6 +5968,43 @@ body.modal-open {
 .empty-editor-message p {
   color: var(--text-muted);
   font-style: italic;
+}
+
+.workflow-shell .json-editor-codemirror {
+  height: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  overflow: hidden;
+  background-color: var(--input-bg);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.02);
+}
+.workflow-shell .json-editor-codemirror.is-invalid {
+  border-color: rgba(220, 53, 69, 0.38);
+  box-shadow: 0 0 0 1px rgba(220, 53, 69, 0.14);
+}
+.workflow-shell .json-editor-codemirror .cm-editor {
+  height: 100%;
+  min-height: 0;
+  background-color: var(--input-bg);
+  color: var(--text-color);
+}
+.workflow-shell .json-editor-codemirror .cm-scroller {
+  height: 100%;
+  min-height: 0;
+}
+.workflow-shell .json-editor-codemirror .cm-content,
+.workflow-shell .json-editor-codemirror .cm-gutterElement {
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.workflow-shell .json-editor-codemirror .cm-panels {
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--card-bg-alt);
+  color: var(--text-color);
+}
+.workflow-shell .json-editor-codemirror .cm-foldGutter .cm-gutterElement,
+.workflow-shell .json-editor-codemirror .cm-lineNumbers .cm-gutterElement {
+  cursor: default;
 }
 
 .save-import-container {
@@ -6275,15 +6341,15 @@ body.modal-open {
   font-size: 1.125rem;
 }
 @media (max-width: 576px) {
+  .app-header .github-button span {
+    display: none;
+  }
   .app-header .github-button {
     padding: 0.75rem;
     border-radius: 50%;
     width: 40px;
     height: 40px;
     justify-content: center;
-  }
-  .app-header .github-button span {
-    display: none;
   }
 }
 @media (max-width: 576px) {
@@ -6505,6 +6571,9 @@ body.modal-open {
   border-color: var(--primary-color);
   box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
 }
+.save-textarea::-moz-placeholder {
+  color: var(--text-muted);
+}
 .save-textarea::placeholder {
   color: var(--text-muted);
 }
@@ -6559,13 +6628,14 @@ body.modal-open {
 
 .editor-sections {
   display: flex;
-  height: 600px;
-  max-height: calc(100vh - 320px);
+  min-height: 760px;
+  max-height: none;
 }
 @media (max-width: 576px) {
   .editor-sections {
     flex-direction: column;
     height: auto;
+    min-height: auto;
   }
 }
 .editor-sections .section-nav {
@@ -6585,6 +6655,31 @@ body.modal-open {
     flex-wrap: wrap;
     overflow-x: auto;
     height: auto;
+  }
+}
+.editor-sections .section-nav-header {
+  padding: 1rem 1rem 0;
+  margin-bottom: 0.75rem;
+}
+.editor-sections .section-nav-header h3,
+.editor-sections .section-nav-header p {
+  margin: 0;
+}
+.editor-sections .section-nav-header p {
+  margin-top: 0.75rem;
+}
+.editor-sections .section-nav-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.75rem;
+  padding: 0 1rem 1rem;
+}
+@media (max-width: 576px) {
+  .editor-sections .section-nav-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+    padding: 0 0.75rem 0.75rem;
   }
 }
 .editor-sections .section-button {
@@ -6634,7 +6729,8 @@ body.modal-open {
 .editor-sections .section-content {
   flex: 1;
   padding: 1.5rem;
-  overflow-y: auto;
+  overflow: visible;
+  min-height: 0;
 }
 @media (max-width: 576px) {
   .editor-sections .section-content {
@@ -6874,11 +6970,14 @@ html {
   border-radius: 6px;
   border: 1px solid var(--border-color);
   transition: box-shadow 0.2s ease-in-out;
-  padding: 1rem;
 }
 .editor-page .save-input-area:hover,
 .editor-page .save-output-area:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+.editor-page .save-input-area,
+.editor-page .save-output-area {
+  padding: 1rem;
 }
 .editor-page .structured-editor .section-content .form-group {
   margin-bottom: 1.5rem;
@@ -7053,6 +7152,428 @@ html {
   .section-navigation::-webkit-scrollbar {
     display: none;
   }
+}
+
+.workflow-shell .workflow-hero {
+  overflow: visible;
+}
+.workflow-shell .workflow-hero-header {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
+}
+@media (max-width: 576px) {
+  .workflow-shell .workflow-hero-header {
+    grid-template-columns: 1fr;
+  }
+}
+.workflow-shell .workflow-kicker,
+.workflow-shell .step-label,
+.workflow-shell .summary-label {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+}
+.workflow-shell .workflow-summary,
+.workflow-shell .section-summary,
+.workflow-shell .structured-editor-toolbar p,
+.workflow-shell .structured-section-header p,
+.workflow-shell .registry-field-header p,
+.workflow-shell .editor-empty-state p,
+.workflow-shell .settings-block p {
+  margin: 0;
+  color: var(--text-muted);
+}
+.workflow-shell .workflow-status-strip,
+.workflow-shell .workspace-meta-bar,
+.workflow-shell .structured-filter-group,
+.workflow-shell .workspace-view-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+.workflow-shell .status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background-color: var(--card-bg-alt);
+  color: var(--text-color);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.workflow-shell .status-chip.success {
+  border-color: rgba(40, 167, 69, 0.35);
+  background-color: rgba(40, 167, 69, 0.12);
+  color: #2a8f4d;
+}
+.workflow-shell .status-chip.warning {
+  border-color: rgba(255, 193, 7, 0.35);
+  background-color: rgba(255, 193, 7, 0.14);
+  color: #8a6a00;
+}
+.workflow-shell .status-chip.danger {
+  border-color: rgba(220, 53, 69, 0.35);
+  background-color: rgba(220, 53, 69, 0.12);
+  color: #b42337;
+}
+.workflow-shell .workflow-step-card .card-header {
+  gap: 1rem;
+}
+@media (max-width: 576px) {
+  .workflow-shell .workflow-step-card .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+.workflow-shell .validation-summary-grid,
+.workflow-shell .export-review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.workflow-shell .validation-summary-card,
+.workflow-shell .export-review-card,
+.workflow-shell .settings-block {
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.08), rgba(var(--primary-color-rgb), 0.02)), var(--card-bg-alt);
+}
+.workflow-shell .validation-summary-card strong,
+.workflow-shell .export-review-card strong,
+.workflow-shell .settings-block strong {
+  display: block;
+  font-size: 1rem;
+  color: var(--title-color);
+}
+.workflow-shell .workflow-list-block {
+  margin-top: 1.5rem;
+}
+.workflow-shell .workflow-list,
+.workflow-shell .field-issue-list {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.5rem;
+}
+.workflow-shell .issue-path {
+  display: inline-block;
+  margin-left: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.workflow-shell .structure-test-summary {
+  margin: 0.75rem 0 0;
+  font-weight: 600;
+}
+.workflow-shell .structure-test-summary.success {
+  color: #2a8f4d;
+}
+.workflow-shell .structure-test-summary.danger {
+  color: #b42337;
+}
+.workflow-shell .workspace-panel,
+.workflow-shell .workspace-settings-panel {
+  margin-top: 1.5rem;
+}
+.workflow-shell .workspace-settings-panel {
+  display: grid;
+  gap: 1.5rem;
+}
+.workflow-shell .editor-empty-state {
+  padding: 1.65rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 14px;
+  background-color: var(--card-bg-alt);
+}
+.workflow-shell .editor-empty-state h3 {
+  margin: 0 0 0.5rem;
+}
+.workflow-shell .editor-empty-state.compact {
+  padding: 1.5rem;
+}
+.workflow-shell .registry-structured-editor {
+  display: grid;
+  gap: 1.5rem;
+}
+.workflow-shell .structured-editor-toolbar {
+  display: grid;
+  gap: 1rem;
+}
+.workflow-shell .structured-section-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+@media (max-width: 576px) {
+  .workflow-shell .structured-section-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.workflow-shell .structured-section-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background-color: var(--card-bg-alt);
+  align-content: start;
+}
+.workflow-shell .structured-section-header,
+.workflow-shell .registry-field-header {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.workflow-shell .structured-section-header h4,
+.workflow-shell .registry-field-header h4 {
+  margin: 0 0 0.35rem;
+}
+@media (max-width: 576px) {
+  .workflow-shell .structured-section-header,
+  .workflow-shell .registry-field-header {
+    flex-direction: column;
+  }
+}
+.workflow-shell .structured-field-list {
+  display: grid;
+  gap: 1rem;
+}
+.workflow-shell .registry-field {
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background-color: var(--card-bg);
+}
+.workflow-shell .registry-field.has-issues {
+  border-color: rgba(255, 193, 7, 0.4);
+  box-shadow: 0 0 0 1px rgba(255, 193, 7, 0.12);
+}
+.workflow-shell .registry-field-control {
+  margin-top: 0.9rem;
+}
+.workflow-shell .field-path-badge,
+.workflow-shell .section-issue-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background-color: rgba(var(--primary-color-rgb), 0.12);
+  color: var(--primary-color);
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.workflow-shell .registry-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+}
+.workflow-shell .json-workspace-shell {
+  min-height: 360px;
+}
+.workflow-shell .json-editor-shell {
+  display: grid;
+  gap: 1rem;
+}
+.workflow-shell .json-editor-heading {
+  display: grid;
+  gap: 0.45rem;
+}
+.workflow-shell .json-editor-heading h3,
+.workflow-shell .json-editor-heading p {
+  margin: 0;
+}
+.workflow-shell .json-editor-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+@media (max-width: 576px) {
+  .workflow-shell .json-editor-toolbar {
+    flex-direction: column;
+  }
+}
+.workflow-shell .json-editor-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.workflow-shell .json-editor-meta {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.workflow-shell .json-editor-search {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr) auto auto auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background-color: var(--card-bg-alt);
+}
+@media (max-width: 576px) {
+  .workflow-shell .json-editor-search {
+    grid-template-columns: 1fr;
+  }
+}
+.workflow-shell .json-editor-search__label,
+.workflow-shell .json-editor-search__status,
+.workflow-shell .json-editor-search__toggle {
+  font-size: 0.9rem;
+}
+.workflow-shell .json-editor-search__label,
+.workflow-shell .json-editor-search__toggle {
+  font-weight: 600;
+}
+.workflow-shell .json-editor-search__status {
+  color: var(--text-muted);
+}
+.workflow-shell .json-editor-search__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.workflow-shell .json-editor-search__input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background-color: var(--input-bg);
+  color: var(--text-color);
+}
+.workflow-shell .json-editor-search__input:focus {
+  outline: 2px solid rgba(var(--primary-color-rgb), 0.22);
+  outline-offset: 1px;
+  border-color: var(--primary-color);
+}
+.workflow-shell .json-editor-surface {
+  height: clamp(420px, 68vh, 760px);
+  min-height: 420px;
+  max-height: 760px;
+  overflow: hidden;
+  border-radius: 14px;
+}
+@media (max-width: 576px) {
+  .workflow-shell .json-editor-surface {
+    height: min(60vh, 560px);
+    min-height: 320px;
+  }
+}
+.workflow-shell .json-editor-label {
+  font-weight: 500;
+  color: var(--label-color);
+}
+.workflow-shell .json-expert-input {
+  min-height: 420px;
+}
+.workflow-shell .json-editor-helper {
+  margin: 0;
+  color: var(--text-muted);
+}
+.workflow-shell .json-editor-status-block {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background-color: var(--card-bg-alt);
+}
+@media (max-width: 576px) {
+  .workflow-shell .json-editor-status-block {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+.workflow-shell .json-editor-status-block.is-error {
+  border-color: rgba(220, 53, 69, 0.35);
+  background-color: rgba(220, 53, 69, 0.08);
+}
+.workflow-shell .json-editor-status-block__summary {
+  display: grid;
+  gap: 0.35rem;
+}
+.workflow-shell .json-editor-status-block__location {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.workflow-shell .json-validation-summary {
+  display: grid;
+  gap: 1rem;
+}
+.workflow-shell .json-validation-summary__meta,
+.workflow-shell .json-validation-summary__paths {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+.workflow-shell .json-validation-summary__paths {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.workflow-shell .json-validation-summary__paths li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background-color: var(--card-bg);
+}
+.workflow-shell .json-validation-summary__issues li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.workflow-shell .issue-severity-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.5rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.workflow-shell .issue-severity-pill.error {
+  background-color: rgba(220, 53, 69, 0.12);
+  color: #b42337;
+}
+.workflow-shell .issue-severity-pill.warning {
+  background-color: rgba(255, 193, 7, 0.16);
+  color: #8a6a00;
+}
+.workflow-shell .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .m-0 {
@@ -7375,4 +7896,4 @@ html {
   padding-left: 2.5rem;
 }
 
-/*# sourceMappingURL=main.css.map */
+/* Main SCSS file *//*# sourceMappingURL=main.css.map */

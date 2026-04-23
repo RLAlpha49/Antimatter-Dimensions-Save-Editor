@@ -1,56 +1,82 @@
-import React, { useState, useEffect } from 'react';
-import { useSave } from '../contexts/SaveContext';
-import JsonEditor from './JsonEditor';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { useSave, useSaveSelector } from '../contexts/SaveContext';
 import StructuredEditor from './StructuredEditor';
 import 'font-awesome/css/font-awesome.min.css';
 import ThemeSelector from './ThemeSelector';
-import changelogData from '../data/changelog.json';
+const JsonEditor = lazy(() => import('./JsonEditor'));
 
-// Define the Window interface extension to include changelogData
-declare global {
-  interface Window {
-    changelogData?: {
-      versions: Array<{
-        version: string;
-        date: string;
-        categories: {
-          [key: string]: string[];
-        };
-      }>;
-      info: string[];
-    };
+type WorkspaceView = 'structured' | 'json' | 'settings';
+
+const formatChangeTime = (timestamp: number | null): string => {
+  if (!timestamp) {
+    return 'No changes yet';
   }
-}
+
+  return new Date(timestamp).toLocaleString();
+};
 
 const Main: React.FC = () => {
-  // Tab types
-  type TabType = 'structured' | 'json' | 'settings' | 'changelog';
-  
-  // State to track active tab
-  const [activeTab, setActiveTab] = useState<TabType>('structured');
-  
-  // Load changelog data
+  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('structured');
+  const [hasMountedJsonEditor, setHasMountedJsonEditor] = useState(false);
+  const structuredPanelRef = useRef<HTMLDivElement | null>(null);
+  const jsonPanelRef = useRef<HTMLDivElement | null>(null);
+  const settingsPanelRef = useRef<HTMLDivElement | null>(null);
+  const hasFocusedWorkspacePanel = useRef(false);
+  const structuredTabId = 'workspace-tab-structured';
+  const jsonTabId = 'workspace-tab-json';
+  const settingsTabId = 'workspace-tab-settings';
+  const structuredPanelId = 'workspace-panel-structured';
+  const jsonPanelId = 'workspace-panel-json';
+  const settingsPanelId = 'workspace-panel-settings';
+
+  const handleWorkspaceViewChange = (nextView: WorkspaceView) => {
+    setWorkspaceView(nextView);
+    if (nextView === 'json') {
+      setHasMountedJsonEditor(true);
+    }
+  };
+
   useEffect(() => {
-    // Set the changelog data directly
-    window.changelogData = changelogData;
-  }, []);
-  
-  // Get save context
+    if (!hasFocusedWorkspacePanel.current) {
+      hasFocusedWorkspacePanel.current = true;
+      return;
+    }
+
+    const nextPanel = workspaceView === 'structured'
+      ? structuredPanelRef.current
+      : workspaceView === 'json'
+        ? jsonPanelRef.current
+        : settingsPanelRef.current;
+    nextPanel?.focus();
+  }, [workspaceView]);
+
   const { 
     rawSaveData, 
     setRawSaveData, 
     decryptSave, 
     encryptSave, 
     encodedOutputData,
-    errorMessage
+    errorMessage,
+    isLoaded,
+    saveType,
+    testResults,
+    testSave,
   } = useSave();
+  const document = useSaveSelector((state) => state.document);
+  const lastChange = useSaveSelector((state) => state.lastChange);
+  const isDirty = useSaveSelector((state) => state.isDirty);
+
+  const validationIssues = document?.validation.issues ?? [];
+  const validationErrors = validationIssues.filter((issue) => issue.severity === 'error');
+  const validationWarnings = validationIssues.filter((issue) => issue.severity === 'warning');
+  const reviewMessage = !isLoaded
+    ? 'Import and decode a save before generating an export string.'
+    : encodedOutputData
+      ? 'Encoded export is ready to copy.'
+      : isDirty
+        ? 'Changes are pending encryption.'
+        : 'No encoded export has been generated yet.';
   
-  // Handle tab change
-  const handleTabChange = (tab: TabType) => {
-    setActiveTab(tab);
-  };
-  
-  // Handle paste button click
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
@@ -60,144 +86,73 @@ const Main: React.FC = () => {
     }
   };
   
-  // Handle decrypt button click
   const handleDecrypt = () => {
     decryptSave();
   };
   
-  // Handle encrypt button click
   const handleEncrypt = () => {
     encryptSave();
   };
   
-  // Handle copy button click
   const handleCopy = async () => {
     try {
       if (encodedOutputData) {
         await navigator.clipboard.writeText(encodedOutputData);
-        console.log('Copied to clipboard');
       }
     } catch (error) {
       console.error('Failed to copy to clipboard:', error);
     }
   };
   
-  const renderChangelogContent = () => {
-    const changelogData = window.changelogData || { versions: [], info: [] };
-    
-    if (!changelogData.versions || changelogData.versions.length === 0) {
-      return <p className="no-changes">No changelog available</p>;
-    }
-
-    return (
-      <>
-        {changelogData.info && changelogData.info.length > 0 && (
-          <div className="info-banner">
-            {changelogData.info.map((message, idx) => (
-              <div className="info-item" key={idx}>
-                <i className="fa fa-info-circle pulse-subtle" aria-hidden="true"></i>
-                <span>{message}</span>
+  return (
+    <main className="editor-container workflow-shell" id="save-editor">
+      <div className="main-content">
+        <section className="card workflow-hero">
+          <div className="card-body">
+            <div className="workflow-hero-header">
+              <div>
+                <p className="workflow-kicker">Phase 3 workflow</p>
+                <h2>Import, validate, edit, then review the export</h2>
+                <p className="workflow-summary">
+                  The shell now tracks format, validation, and dirty state directly from the centralized document store.
+                </p>
               </div>
-            ))}
-          </div>
-        )}
-        
-        <div className="changelog-list-view">
-          {changelogData.versions.map((version, vIdx) => (
-            <div className="version-entry" key={vIdx} data-version={version.version}>
-              <div className="version-header">
-                <div className="version-badge">v{version.version}</div>
-                <div className="version-date">
-                  <i className="fa fa-calendar-o" aria-hidden="true"></i>
-                  {new Date(version.date).toLocaleDateString()}
-                </div>
-              </div>
-              
-              <div className="version-content">
-                {version.categories && Object.entries(version.categories)
-                  .filter(([_, changes]) => changes.length > 0)
-                  .map(([category, changes], cIdx) => {
-                    const categoryConfig = {
-                      new: { 
-                        icon: 'fa-star',
-                        title: 'New Features',
-                        color: 'success',
-                        emoji: '✨'
-                      },
-                      improved: { 
-                        icon: 'fa-arrow-up',
-                        title: 'Improvements',
-                        color: 'primary',
-                        emoji: '🔄'
-                      },
-                      fixed: { 
-                        icon: 'fa-bug',
-                        title: 'Bug Fixes',
-                        color: 'warning',
-                        emoji: '🐞'
-                      }
-                    };
-                    
-                    const config = categoryConfig[category] || {
-                      icon: 'fa-info',
-                      title: 'Changes',
-                      color: 'info',
-                      emoji: 'ℹ️'
-                    };
-                    
-                    return (
-                      <div className={`category-section ${category}`} key={cIdx}>
-                        <div className={`category-header ${config.color}`}>
-                          <i className={`fa ${config.icon}`} aria-hidden="true"></i>
-                          <h4>{config.title}</h4>
-                          <span className="change-count">{changes.length}</span>
-                        </div>
-                        <ul className="changes-list">
-                          {changes.map((change, idx) => (
-                            <li key={idx}>
-                              <span className="change-bullet">{config.emoji}</span>
-                              <div className="change-content">
-                                <span className="change-index">{idx+1}</span>
-                                <span className="change-text">{change}</span>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    );
-                  })}
+              <div className="workflow-status-strip" aria-label="Save status overview">
+                <span className={`status-chip ${isLoaded ? 'success' : 'neutral'}`}>{isLoaded ? 'Save loaded' : 'Awaiting import'}</span>
+                <span className={`status-chip ${isDirty ? 'warning' : 'success'}`}>{isDirty ? 'Dirty edits' : 'Clean workspace'}</span>
+                <span className="status-chip neutral">Format: {isLoaded ? saveType.toUpperCase() : 'Unknown'}</span>
+                <span className={`status-chip ${validationErrors.length > 0 ? 'danger' : validationWarnings.length > 0 ? 'warning' : 'success'}`}>
+                  {validationIssues.length > 0 ? `${validationIssues.length} validation issue${validationIssues.length === 1 ? '' : 's'}` : 'Validation clear'}
+                </span>
               </div>
             </div>
-          ))}
-        </div>
-      </>
-    );
-  };
-  
-  return (
-    <div className="editor-container">
-      <div className="main-content">
+          </div>
+        </section>
+
         {errorMessage && (
-          <div className="alert alert-danger">
+          <div className="alert alert-danger" role="alert">
             <strong>Error:</strong> {errorMessage}
           </div>
         )}
         
-        {/* Android Save Support Alert */}
         <div className="alert alert-info">
-          <strong><i className="fa fa-android pulse-subtle" aria-hidden="true"></i> Save Support:</strong> Both PC and Android save files are now supported! Please make a backup of your save files before editing to prevent data loss. If you encounter missing values or other issues, please <a href="https://github.com/ismyshadow/Antimatter-Dimensions-Save-Editor/issues/new" target="_blank" rel="noopener noreferrer">create an issue</a> on GitHub with your original save and details about the problem. <br /> <br />
-          <strong>Warning:</strong> The structured editor is a bit messed up right now with the android support, so please use the JSON editor for now. The structured editor will be fixed in a future update when I have time to work on it.
+          <strong><i className="fa fa-android pulse-subtle" aria-hidden="true"></i> Save support:</strong> PC and Android saves share the same workflow now. Import a save, verify the summary, then choose the structured workspace or JSON editor for deeper edits.
         </div>
         
-        {/* Import Save Section */}
-        <div className="card">
+        <section className="card workflow-step-card">
           <div className="card-header">
-            <h2>Import Save</h2>
+            <div>
+              <p className="step-label">Step 1</p>
+              <h2>Import save</h2>
+            </div>
+            <span className="status-chip neutral">Raw input</span>
           </div>
           <div className="card-body">
+            <p className="section-summary">Paste encrypted save data, then decode it into the shared document store.</p>
             <div className="input-group">
+              <label htmlFor="save-import-input">Encrypted save</label>
               <textarea
-                id="input"
+                id="save-import-input"
                 className="save-textarea"
                 placeholder="Paste your encrypted save data here..."
                 aria-label="Save data input"
@@ -215,164 +170,239 @@ const Main: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </section>
         
-        {/* Editor Tabs */}
-        <div className="card">
-          {/* Main tabs */}
-          <div className="card-header with-tabs">
-            <div className="tabs main-tabs" role="tablist" aria-label="Editor modes">
+        <section className="card workflow-step-card">
+          <div className="card-header">
+            <div>
+              <p className="step-label">Step 2</p>
+              <h2>Validation summary</h2>
+            </div>
+            <button className="btn secondary" onClick={() => testSave()} disabled={!isLoaded}>
+              <i className="fa fa-check-circle"></i> Run structure test
+            </button>
+          </div>
+          <div className="card-body">
+            {!isLoaded || !document ? (
+              <div className="editor-empty-state compact">
+                <h3>No decoded save yet</h3>
+                <p>Decrypt a save to populate stage detection, registry validation, and review status.</p>
+              </div>
+            ) : (
+              <div className="validation-summary-grid">
+                <div className="validation-summary-card">
+                  <span className="summary-label">Progress stage</span>
+                  <strong>{document.validation.stage}</strong>
+                </div>
+                <div className="validation-summary-card">
+                  <span className="summary-label">Errors</span>
+                  <strong>{validationErrors.length}</strong>
+                </div>
+                <div className="validation-summary-card">
+                  <span className="summary-label">Warnings</span>
+                  <strong>{validationWarnings.length}</strong>
+                </div>
+                <div className="validation-summary-card">
+                  <span className="summary-label">Last change</span>
+                  <strong>{formatChangeTime(lastChange?.timestamp ?? null)}</strong>
+                </div>
+              </div>
+            )}
+
+            {validationIssues.length > 0 && (
+              <div className="workflow-list-block">
+                <h3>Registry validation findings</h3>
+                <ul className="workflow-list">
+                  {validationIssues.slice(0, 8).map((issue) => (
+                    <li key={`${issue.code}-${issue.path ?? issue.message}`}>
+                      <strong>{issue.severity.toUpperCase()}</strong> {issue.message}
+                      {issue.path && <span className="issue-path">{issue.path}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {testResults && (
+              <div className="workflow-list-block">
+                <h3>Structure test</h3>
+                <p className={`structure-test-summary ${testResults.success ? 'success' : 'danger'}`}>
+                  {testResults.success ? 'External structure check passed.' : `External structure check found ${testResults.errors.length} issue${testResults.errors.length === 1 ? '' : 's'}.`}
+                </p>
+                {testResults.errors.length > 0 && (
+                  <ul className="workflow-list">
+                    {testResults.errors.slice(0, 8).map((error, index) => (
+                      <li key={`${index}-${error}`}>{error}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="card workflow-step-card">
+          <div className="card-header">
+            <div>
+              <p className="step-label">Step 3</p>
+              <h2>Edit workspace</h2>
+            </div>
+            <div className="workspace-view-switcher" role="tablist" aria-label="Workspace views">
               <button 
-                className={`tab-button ${activeTab === 'structured' ? 'active' : ''}`}
-                id="structured-tab"
-                data-tab="structured"
+                id={structuredTabId}
+                type="button"
                 role="tab"
-                aria-controls="structured-editor"
-                aria-selected={activeTab === 'structured'}
-                onClick={() => handleTabChange('structured')}
+                className={`tab-button ${workspaceView === 'structured' ? 'active' : ''}`}
+                onClick={() => handleWorkspaceViewChange('structured')}
+                aria-selected={workspaceView === 'structured'}
+                aria-controls={structuredPanelId}
+                tabIndex={workspaceView === 'structured' ? 0 : -1}
               >
                 <i className="fa fa-th-large" aria-hidden="true"></i>
-                <span>Structured Editor</span>
+                <span>Structured</span>
               </button>
               <button 
-                className={`tab-button ${activeTab === 'json' ? 'active' : ''}`}
-                id="json-tab"
-                data-tab="json"
+                id={jsonTabId}
+                type="button"
                 role="tab"
-                aria-controls="json-editor"
-                aria-selected={activeTab === 'json'}
-                onClick={() => handleTabChange('json')}
+                className={`tab-button ${workspaceView === 'json' ? 'active' : ''}`}
+                onClick={() => handleWorkspaceViewChange('json')}
+                disabled={!isLoaded}
+                aria-selected={workspaceView === 'json'}
+                aria-controls={jsonPanelId}
+                tabIndex={workspaceView === 'json' ? 0 : -1}
               >
                 <i className="fa fa-code" aria-hidden="true"></i>
-                <span>JSON Editor</span>
+                <span>JSON</span>
               </button>
               <button 
-                className={`tab-button ${activeTab === 'settings' ? 'active' : ''}`}
-                id="settings-tab"
-                data-tab="settings"
+                id={settingsTabId}
+                type="button"
                 role="tab"
-                aria-controls="settings-editor"
-                aria-selected={activeTab === 'settings'}
-                onClick={() => handleTabChange('settings')}
+                className={`tab-button ${workspaceView === 'settings' ? 'active' : ''}`}
+                onClick={() => handleWorkspaceViewChange('settings')}
+                aria-selected={workspaceView === 'settings'}
+                aria-controls={settingsPanelId}
+                tabIndex={workspaceView === 'settings' ? 0 : -1}
               >
                 <i className="fa fa-cog" aria-hidden="true"></i>
-                <span>Settings</span>
-              </button>
-              <button 
-                className={`tab-button ${activeTab === 'changelog' ? 'active' : ''}`}
-                id="changelog-tab"
-                data-tab="changelog"
-                role="tab"
-                aria-controls="changelog-editor"
-                aria-selected={activeTab === 'changelog'}
-                onClick={() => handleTabChange('changelog')}
-              >
-                <i className="fa fa-history" aria-hidden="true"></i>
-                <span>Changelog</span>
+                <span>Preferences</span>
               </button>
             </div>
           </div>
-
           <div className="card-body">
-            <div className="tab-content">
-              {/* Structured editor */}
-              <div 
-                className={`tab-pane ${activeTab === 'structured' ? 'active' : ''}`}
-                id="structured-editor"
+            <div className="workspace-meta-bar">
+              <span className={`status-chip ${isDirty ? 'warning' : 'success'}`}>{isDirty ? 'Unsaved edits in memory' : 'No staged edits'}</span>
+              <span className={`status-chip ${errorMessage ? 'danger' : 'neutral'}`}>{errorMessage ? 'Store error present' : 'Store healthy'}</span>
+              <span className="status-chip neutral">Format: {isLoaded ? saveType.toUpperCase() : 'Unknown'}</span>
+              <span className="status-chip neutral">Last source: {lastChange?.source ?? 'none'}</span>
+            </div>
+
+            <div className="workspace-panel">
+              <div
+                id={structuredPanelId}
+                ref={structuredPanelRef}
                 role="tabpanel"
-                aria-labelledby="structured-tab"
+                aria-labelledby={structuredTabId}
+                hidden={workspaceView !== 'structured'}
+                tabIndex={-1}
               >
-                <StructuredEditor isActive={activeTab === 'structured'} />
+                {workspaceView === 'structured' && <StructuredEditor isActive={workspaceView === 'structured'} />}
               </div>
-              
-              {/* JSON Editor */}
-              <div 
-                className={`tab-pane ${activeTab === 'json' ? 'active' : ''}`}
-                id="json-editor"
+
+              {(workspaceView === 'json' || hasMountedJsonEditor) && (
+                <div
+                  id={jsonPanelId}
+                  ref={jsonPanelRef}
+                  className="json-workspace-shell"
+                  role="tabpanel"
+                  aria-labelledby={jsonTabId}
+                  hidden={workspaceView !== 'json'}
+                  tabIndex={-1}
+                >
+                  {!hasMountedJsonEditor ? (
+                    <div className="editor-empty-state compact">
+                      <h3>JSON editor will mount on demand</h3>
+                      <p>Open the JSON workspace once to load the heavy editor only when you need it.</p>
+                    </div>
+                  ) : (
+                    <Suspense
+                      fallback={
+                        <div className="editor-empty-state compact">
+                          <h3>Loading JSON workspace</h3>
+                          <p>Preparing the tree and text editor for the current save snapshot.</p>
+                        </div>
+                      }
+                    >
+                      <JsonEditor isActive={workspaceView === 'json'} />
+                    </Suspense>
+                  )}
+                </div>
+              )}
+
+              <div
+                id={settingsPanelId}
+                ref={settingsPanelRef}
                 role="tabpanel"
-                aria-labelledby="json-tab"
+                aria-labelledby={settingsTabId}
+                hidden={workspaceView !== 'settings'}
+                tabIndex={-1}
               >
-                <JsonEditor isActive={activeTab === 'json'} />
-              </div>
-              
-              {/* Settings */}
-              <div 
-                className={`tab-pane ${activeTab === 'settings' ? 'active' : ''}`}
-                id="settings-editor"
-                role="tabpanel"
-                aria-labelledby="settings-tab"
-              >
-                <div className="settings-layout">
-                  <h3>Editor Preferences</h3>
-                  
-                  <div className="settings-section-divider">
-                    <span className="divider-title">App Theme</span>
-                  </div>
-                  
-                  <div className="theme-settings-container">
+                {workspaceView === 'settings' && (
+                <div className="workspace-settings-panel">
+                  <div className="settings-block">
+                    <h3>Theme</h3>
+                    <p>Theme preferences stay compatible with the existing selector and local storage behavior.</p>
                     <ThemeSelector />
                   </div>
-                  
-                  <div className="settings-section-divider">
-                    <span className="divider-title">Editor Options</span>
-                  </div>
-                  
-                  <div className="settings-group">
-                    <h4>Default View</h4>
-                    <div className="input-group">
-                      <label>
-                        <input type="radio" name="defaultEditor" value="structured" defaultChecked />
-                        <span className="radio-label">Start with Structured Editor</span>
-                      </label>
-                      <label>
-                        <input type="radio" name="defaultEditor" value="json" />
-                        <span className="radio-label">Start with JSON Editor</span>
-                      </label>
-                    </div>
-                  </div>
 
-                  <div className="settings-group">
-                    <h4>JSON Editor Settings</h4>
-                    <div className="input-group">
-                      <label>
-                        <input type="checkbox" name="autoFormat" defaultChecked />
-                        <span className="checkbox-label">Auto-format JSON</span>
-                      </label>
-                      <label>
-                        <input type="checkbox" name="showErrors" defaultChecked />
-                        <span className="checkbox-label">Show validation errors</span>
-                      </label>
-                    </div>
+                  <div className="settings-block">
+                    <h3>Workflow notes</h3>
+                    <ul className="workflow-list">
+                      <li>The structured workspace is generated from the registry in core save metadata.</li>
+                      <li>The JSON editor mounts lazily to avoid paying its cost until you open it.</li>
+                      <li>Dirty, error, and format state are surfaced in the shell instead of being hidden inside tabs.</li>
+                    </ul>
                   </div>
-
-                  <button className="btn danger">Reset All Settings</button>
                 </div>
-              </div>
-
-              {/* Changelog */}
-              <div 
-                className={`tab-pane ${activeTab === 'changelog' ? 'active' : ''}`}
-                id="changelog-editor"
-                role="tabpanel"
-                aria-labelledby="changelog-tab"
-              >
-                <div className="changelog-container">
-                  {renderChangelogContent()}
-                </div>
+                )}
               </div>
             </div>
           </div>
-        </div>
+        </section>
         
-        {/* Export Save Section */}
-        <div className="card">
+        <section className="card workflow-step-card">
           <div className="card-header">
-            <h2>Export Save</h2>
+            <div>
+              <p className="step-label">Step 4</p>
+              <h2>Export review</h2>
+            </div>
+            <span className={`status-chip ${encodedOutputData ? 'success' : 'neutral'}`}>{encodedOutputData ? 'Ready to copy' : 'Not generated'}</span>
           </div>
           <div className="card-body">
+            <div className="export-review-grid">
+              <div className="export-review-card">
+                <span className="summary-label">Format</span>
+                <strong>{isLoaded ? saveType.toUpperCase() : 'Unknown'}</strong>
+              </div>
+              <div className="export-review-card">
+                <span className="summary-label">Dirty state</span>
+                <strong>{isDirty ? 'Pending export' : 'Matches imported snapshot'}</strong>
+              </div>
+              <div className="export-review-card">
+                <span className="summary-label">Last path</span>
+                <strong>{lastChange?.path || 'Root document'}</strong>
+              </div>
+              <div className="export-review-card">
+                <span className="summary-label">Export status</span>
+                <strong>{reviewMessage}</strong>
+              </div>
+            </div>
+
             <div className="input-group">
+              <label htmlFor="save-export-output">Encoded export</label>
               <textarea
-                id="output"
+                id="save-export-output"
                 className="save-textarea"
                 placeholder="Your encrypted save will appear here..."
                 aria-label="Save data output"
@@ -382,18 +412,18 @@ const Main: React.FC = () => {
               />
             </div>
             <div className="button-group">
-              <button id="encryptButton" className="btn primary" onClick={handleEncrypt}>
+              <button id="encryptButton" className="btn primary" onClick={handleEncrypt} disabled={!isLoaded}>
                 <i className="fa fa-lock"></i> Encrypt
               </button>
-              <button id="copyButton" className="btn secondary" onClick={handleCopy}>
+              <button id="copyButton" className="btn secondary" onClick={handleCopy} disabled={!encodedOutputData}>
                 <i className="fa fa-copy"></i> Copy
               </button>
             </div>
           </div>
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
-}
+};
 
 export default Main; 

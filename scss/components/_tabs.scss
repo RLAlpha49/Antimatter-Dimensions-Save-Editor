@@ -477,7 +477,6 @@
 /* Dimensions section specific styling */
 .dimensions-grid {
   display: grid;
-  gap: 1rem;
 }
 
 .dimension-row {
@@ -794,7 +793,6 @@
   }
 
   .form-group {
-    margin-bottom: 1.5rem;
 
     label {
       display: block;
@@ -1010,13 +1008,13 @@
   .dimension-group {
     background-color: var(--card-bg-alt);
     border-radius: 8px;
-    padding: 1rem;
+    padding: 0.75rem;
     border: 1px solid var(--border-color);
     
     h4 {
       margin-top: 0;
-      margin-bottom: 1rem;
-      padding-bottom: 0.5rem;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.35rem;
       border-bottom: 1px solid var(--border-color);
       color: var(--primary-color);
       font-weight: 600;
