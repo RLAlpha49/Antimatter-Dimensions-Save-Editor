@@ -261,6 +261,7 @@ const JsonEditor: React.FC<JsonEditorProps> = ({ isActive }) => {
   const editorHelperId = useId();
   const editorStatusId = useId();
   const editorValidationId = useId();
+  const searchStatusId = useId();
 
   const clearPendingHistoryCommit = () => {
     if (historyCommitTimerRef.current) {
@@ -333,6 +334,20 @@ const JsonEditor: React.FC<JsonEditorProps> = ({ isActive }) => {
 
     setLiveMessage(`Workspace validation after apply: ${errors} error${errors === 1 ? '' : 's'} and ${warnings} warning${warnings === 1 ? '' : 's'}.`);
   }, [validation]);
+
+  const handleCursorChange = useCallback((nextCursorState: JsonCursorState) => {
+    setCursorState((currentCursorState) => {
+      if (
+        currentCursorState.offset === nextCursorState.offset
+        && currentCursorState.line === nextCursorState.line
+        && currentCursorState.column === nextCursorState.column
+      ) {
+        return currentCursorState;
+      }
+
+      return nextCursorState;
+    });
+  }, []);
 
   const handleDraftChange = (nextDraft: string) => {
     setDraft(nextDraft);
@@ -570,7 +585,7 @@ const JsonEditor: React.FC<JsonEditorProps> = ({ isActive }) => {
   }
 
   return (
-    <div className="json-editor-shell" aria-label="Expert JSON workspace">
+    <div className="json-editor-shell" aria-label="Expert JSON workspace" aria-busy={isParsing}>
       <div className="json-editor-toolbar">
         <div className="json-editor-heading">
           <h3 id={editorLabelId}>Expert JSON workspace</h3>
@@ -607,6 +622,7 @@ const JsonEditor: React.FC<JsonEditorProps> = ({ isActive }) => {
       </div>
 
       <div className="json-editor-meta">
+        <span className="status-chip neutral">{String(saveDocument.sourceType).toUpperCase()} save</span>
         <span className={`status-chip ${hasLocalChanges ? 'warning' : 'success'}`}>
           {hasLocalChanges ? 'Local changes pending' : 'Draft matches workspace'}
         </span>
@@ -629,10 +645,22 @@ const JsonEditor: React.FC<JsonEditorProps> = ({ isActive }) => {
           id="json-editor-search-input"
           className="json-editor-search__input"
           type="search"
+          aria-describedby={searchStatusId}
           value={searchState.query}
           placeholder="Search keys or values"
           onChange={(event) => {
             setSearchState((current) => ({ ...current, query: event.target.value }));
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              if (event.shiftKey) {
+                handleFindPrevious();
+                return;
+              }
+
+              handleFindNext();
+            }
           }}
         />
         <label className="json-editor-search__toggle">
@@ -645,7 +673,7 @@ const JsonEditor: React.FC<JsonEditorProps> = ({ isActive }) => {
           />
           Case sensitive
         </label>
-        <span className="json-editor-search__status">
+        <span id={searchStatusId} className="json-editor-search__status" role="status" aria-live="polite" aria-atomic="true">
           {searchState.query
             ? (searchMatchCount > 0 ? `${currentSearchMatch} of ${searchMatchCount}` : 'No matches')
             : 'Enter a term to search the draft'}
@@ -679,7 +707,7 @@ const JsonEditor: React.FC<JsonEditorProps> = ({ isActive }) => {
           invalid={isEditorInvalid}
           describedBy={`${editorHelperId} ${editorStatusId}${validationIssues.length > 0 ? ` ${editorValidationId}` : ''}`}
           onChange={handleDraftChange}
-          onCursorChange={setCursorState}
+          onCursorChange={handleCursorChange}
           onRequestSearchFocus={focusSearchInput}
           onApplyShortcut={handleApply}
           onFormatShortcut={handleFormat}

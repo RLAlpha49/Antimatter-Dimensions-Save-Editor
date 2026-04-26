@@ -8,6 +8,7 @@ import {
   BankedInfinitiesClass
 } from '../../Struct';
 import BigNumberInput from '../BigNumberInput';
+import JsonTextareaField from '../JsonTextareaField';
 
 // Helper function to safely convert BankedInfinitiesClass to string
 const formatBigNumber = (value: string | BankedInfinitiesClass | number | undefined): string => {
@@ -48,50 +49,64 @@ const CelestialsSection: React.FC<SectionProps> = ({
         <h3>Celestials</h3>
         
         {/* Celestial Subtabs */}
-        <div className="section-subtabs">
+        <nav className="section-subtabs" aria-label="Celestial sections">
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'teresa' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('teresa')}
+            aria-pressed={activeSubtab === 'teresa'}
           >
-            <FaGem className="subtab-icon" /> Teresa
+            <FaGem className="subtab-icon" aria-hidden="true" /> Teresa
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'effarig' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('effarig')}
+            aria-pressed={activeSubtab === 'effarig'}
           >
-            <FaScroll className="subtab-icon" /> Effarig
+            <FaScroll className="subtab-icon" aria-hidden="true" /> Effarig
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'enslaved' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('enslaved')}
+            aria-pressed={activeSubtab === 'enslaved'}
           >
-            <FaRobot className="subtab-icon" /> The Nameless Ones
+            <FaRobot className="subtab-icon" aria-hidden="true" /> The Nameless Ones
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'v' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('v')}
+            aria-pressed={activeSubtab === 'v'}
           >
-            <FaUsers className="subtab-icon" /> V
+            <FaUsers className="subtab-icon" aria-hidden="true" /> V
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'ra' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('ra')}
+            aria-pressed={activeSubtab === 'ra'}
           >
-            <FaSun className="subtab-icon" /> Ra
+            <FaSun className="subtab-icon" aria-hidden="true" /> Ra
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'laitela' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('laitela')}
+            aria-pressed={activeSubtab === 'laitela'}
           >
-            <FaBalanceScale className="subtab-icon" /> Lai'tela
+            <FaBalanceScale className="subtab-icon" aria-hidden="true" /> Lai'tela
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'pelle' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('pelle')}
+            aria-pressed={activeSubtab === 'pelle'}
           >
-            <FaDragon className="subtab-icon" /> Pelle
+            <FaDragon className="subtab-icon" aria-hidden="true" /> Pelle
           </button>
-        </div>
+        </nav>
         
         {/* Teresa Subtab */}
         <div className={`subtab-content ${activeSubtab === 'teresa' ? 'active' : ''}`}>
@@ -145,16 +160,19 @@ const CelestialsSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="teresa-best-am">Best Run Antimatter</label>
                 {isPCFormat() ? (
-                  <input
-                    type="text"
-                    id="teresa-best-am"
-                    value={String(pcSaveData?.celestials?.teresa?.bestRunAM || '0')}
-                    onChange={(e) => handleValueChange('celestials.teresa.bestRunAM', e.target.value)}
-                  />
+                  <>
+                    <label htmlFor="teresa-best-am">Best Run Antimatter</label>
+                    <input
+                      type="text"
+                      id="teresa-best-am"
+                      value={String(pcSaveData?.celestials?.teresa?.bestRunAM || '0')}
+                      onChange={(e) => handleValueChange('celestials.teresa.bestRunAM', e.target.value)}
+                    />
+                  </>
                 ) : (
                   <BigNumberInput
+                    label="Best Run Antimatter"
                     value={(androidSaveData?.celestials?.teresa?.bestRunAM as any) || {mantissa: 0, exponent: 0}}
                     onChange={(value) => handleValueChange('celestials.teresa.bestRunAM', value)}
                     saveType={saveType}
@@ -164,16 +182,19 @@ const CelestialsSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="teresa-last-machines">Last Repeated Machines</label>
                 {isPCFormat() ? (
-                  <input
-                    type="text"
-                    id="teresa-last-machines"
-                    value={String(pcSaveData?.celestials?.teresa?.lastRepeatedMachines || '0')}
-                    onChange={(e) => handleValueChange('celestials.teresa.lastRepeatedMachines', e.target.value)}
-                  />
+                  <>
+                    <label htmlFor="teresa-last-machines">Last Repeated Machines</label>
+                    <input
+                      type="text"
+                      id="teresa-last-machines"
+                      value={String(pcSaveData?.celestials?.teresa?.lastRepeatedMachines || '0')}
+                      onChange={(e) => handleValueChange('celestials.teresa.lastRepeatedMachines', e.target.value)}
+                    />
+                  </>
                 ) : (
                   <BigNumberInput
+                    label="Last Repeated Machines"
                     value={(androidSaveData?.celestials?.teresa?.lastRepeatedMachines as any) || {mantissa: 0, exponent: 0}}
                     onChange={(value) => handleValueChange('celestials.teresa.lastRepeatedMachines', value)}
                     saveType={saveType}
@@ -204,16 +225,19 @@ const CelestialsSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="effarig-relics">Relic Shards</label>
                 {isPCFormat() ? (
-                  <input
-                    type="number"
-                    id="effarig-relics"
-                    value={Number(pcSaveData?.celestials?.effarig?.relicShards || 0)}
-                    onChange={(e) => handleValueChange('celestials.effarig.relicShards', parseInt(e.target.value))}
-                  />
+                  <>
+                    <label htmlFor="effarig-relics">Relic Shards</label>
+                    <input
+                      type="number"
+                      id="effarig-relics"
+                      value={Number(pcSaveData?.celestials?.effarig?.relicShards || 0)}
+                      onChange={(e) => handleValueChange('celestials.effarig.relicShards', parseInt(e.target.value))}
+                    />
+                  </>
                 ) : (
                   <BigNumberInput
+                    label="Relic Shards"
                     value={(androidSaveData?.celestials?.effarig?.relicShards as any) || {mantissa: 0, exponent: 0}}
                     onChange={(value) => handleValueChange('celestials.effarig.relicShards', value)}
                     saveType={saveType}
@@ -277,16 +301,19 @@ const CelestialsSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="enslaved-stored">Stored Reality Machines</label>
                 {isPCFormat() ? (
-                  <input
-                    type="text"
-                    id="enslaved-stored"
-                    value={String(pcSaveData?.celestials?.enslaved?.stored || '0')}
-                    onChange={(e) => handleValueChange('celestials.enslaved.stored', e.target.value)}
-                  />
+                  <>
+                    <label htmlFor="enslaved-stored">Stored Reality Machines</label>
+                    <input
+                      type="text"
+                      id="enslaved-stored"
+                      value={String(pcSaveData?.celestials?.enslaved?.stored || '0')}
+                      onChange={(e) => handleValueChange('celestials.enslaved.stored', e.target.value)}
+                    />
+                  </>
                 ) : (
                   <BigNumberInput
+                    label="Stored Reality Machines"
                     value={(androidSaveData?.celestials?.enslaved?.stored as any) || {mantissa: 0, exponent: 0}}
                     onChange={(value) => handleValueChange('celestials.enslaved.stored', value)}
                     saveType={saveType}
@@ -415,37 +442,27 @@ const CelestialsSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="ra-petsCont">Pet Container</label>
-                <textarea
+                <JsonTextareaField
                   id="ra-petsCont"
+                  label="Pet Container"
                   rows={3}
-                  value={JSON.stringify(saveData.celestials?.ra?.pets || {})}
-                  onChange={(e) => {
-                    try {
-                      const value = JSON.parse(e.target.value);
-                      handleValueChange('celestials.ra.pets', value);
-                    } catch (error) {
-                      console.error("Invalid JSON:", error);
-                    }
-                  }}
+                  value={saveData.celestials?.ra?.pets || {}}
+                  onChange={(value) => handleValueChange('celestials.ra.pets', value)}
+                  expectation="object"
+                  fallbackValue={{}}
                 />
                 {renderValidationIndicator('celestials.ra.pets')}
               </div>
               
               <div className="form-group">
-                <label htmlFor="ra-alchemy">Alchemy Resources</label>
-                <textarea
+                <JsonTextareaField
                   id="ra-alchemy"
+                  label="Alchemy Resources"
                   rows={3}
-                  value={JSON.stringify(saveData.celestials?.ra?.alchemy || {})}
-                  onChange={(e) => {
-                    try {
-                      const value = JSON.parse(e.target.value);
-                      handleValueChange('celestials.ra.alchemy', value);
-                    } catch (error) {
-                      console.error("Invalid JSON:", error);
-                    }
-                  }}
+                  value={saveData.celestials?.ra?.alchemy || {}}
+                  onChange={(value) => handleValueChange('celestials.ra.alchemy', value)}
+                  expectation="object"
+                  fallbackValue={{}}
                 />
                 {renderValidationIndicator('celestials.ra.alchemy')}
               </div>
@@ -481,16 +498,19 @@ const CelestialsSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="laitela-darkMatter">Dark Matter</label>
                 {isPCFormat() ? (
-                  <input
-                    type="text"
-                    id="laitela-darkMatter"
-                    value={formatBigNumber(pcSaveData?.celestials?.laitela?.darkMatter)}
-                    onChange={(e) => handleValueChange('celestials.laitela.darkMatter', e.target.value)}
-                  />
+                  <>
+                    <label htmlFor="laitela-darkMatter">Dark Matter</label>
+                    <input
+                      type="text"
+                      id="laitela-darkMatter"
+                      value={formatBigNumber(pcSaveData?.celestials?.laitela?.darkMatter)}
+                      onChange={(e) => handleValueChange('celestials.laitela.darkMatter', e.target.value)}
+                    />
+                  </>
                 ) : (
                   <BigNumberInput
+                    label="Dark Matter"
                     value={(androidSaveData?.celestials?.laitela?.darkMatter as any) || {mantissa: 0, exponent: 0}}
                     onChange={(value) => handleValueChange('celestials.laitela.darkMatter', value)}
                     saveType={saveType}
@@ -500,16 +520,19 @@ const CelestialsSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="laitela-darkEnergy">Dark Energy</label>
                 {isPCFormat() ? (
-                  <input
-                    type="text"
-                    id="laitela-darkEnergy"
-                    value={formatBigNumber(pcSaveData?.celestials?.laitela?.darkEnergy)}
-                    onChange={(e) => handleValueChange('celestials.laitela.darkEnergy', e.target.value)}
-                  />
+                  <>
+                    <label htmlFor="laitela-darkEnergy">Dark Energy</label>
+                    <input
+                      type="text"
+                      id="laitela-darkEnergy"
+                      value={formatBigNumber(pcSaveData?.celestials?.laitela?.darkEnergy)}
+                      onChange={(e) => handleValueChange('celestials.laitela.darkEnergy', e.target.value)}
+                    />
+                  </>
                 ) : (
                   <BigNumberInput
+                    label="Dark Energy"
                     value={(androidSaveData?.celestials?.laitela?.darkEnergy as any) || {mantissa: 0, exponent: 0}}
                     onChange={(value) => handleValueChange('celestials.laitela.darkEnergy', value)}
                     saveType={saveType}
@@ -571,70 +594,38 @@ const CelestialsSection: React.FC<SectionProps> = ({
                     onChange={(e) => handleValueChange('celestials.pelle.remnants', e.target.value)}
                   />
                 ) : (
-                  <div className="android-number-inputs">
-                    <input
-                      type="number"
-                      className="mantissa-input"
-                      value={(androidSaveData?.celestials?.pelle?.remnants as any)?.mantissa ?? 0}
-                      onChange={(e) => {
-                        const newValue = { 
-                          mantissa: parseFloat(e.target.value) || 0,
-                          exponent: (androidSaveData?.celestials?.pelle?.remnants as any)?.exponent ?? 0
-                        };
-                        handleValueChange('celestials.pelle.remnants', newValue);
-                      }}
-                      step="0.01"
-                    />
-                    <span className="multiply-symbol">×10</span>
-                    <input
-                      type="number"
-                      className="exponent-input"
-                      value={(androidSaveData?.celestials?.pelle?.remnants as any)?.exponent ?? 0}
-                      onChange={(e) => {
-                        const newValue = {
-                          mantissa: (androidSaveData?.celestials?.pelle?.remnants as any)?.mantissa ?? 0,
-                          exponent: parseInt(e.target.value) || 0
-                        };
-                        handleValueChange('celestials.pelle.remnants', newValue);
-                      }}
-                    />
-                  </div>
+                  <BigNumberInput
+                    label="Remnants"
+                    value={(androidSaveData?.celestials?.pelle?.remnants as any) || { mantissa: 0, exponent: 0 }}
+                    onChange={(value) => handleValueChange('celestials.pelle.remnants', value)}
+                    saveType={saveType}
+                  />
                 )}
                 {renderValidationIndicator('celestials.pelle.remnants')}
               </div>
               
               <div className="form-group">
-                <label htmlFor="pelle-rifts">Rifts</label>
-                <textarea
+                <JsonTextareaField
                   id="pelle-rifts"
+                  label="Rifts"
                   rows={3}
-                  value={JSON.stringify(saveData.celestials?.pelle?.rifts || {})}
-                  onChange={(e) => {
-                    try {
-                      const value = JSON.parse(e.target.value);
-                      handleValueChange('celestials.pelle.rifts', value);
-                    } catch (error) {
-                      console.error("Invalid JSON:", error);
-                    }
-                  }}
+                  value={saveData.celestials?.pelle?.rifts || {}}
+                  onChange={(value) => handleValueChange('celestials.pelle.rifts', value)}
+                  expectation="object"
+                  fallbackValue={{}}
                 />
                 {renderValidationIndicator('celestials.pelle.rifts')}
               </div>
               
               <div className="form-group">
-                <label htmlFor="pelle-upgrades">Upgrades</label>
-                <textarea
+                <JsonTextareaField
                   id="pelle-upgrades"
+                  label="Upgrades"
                   rows={3}
-                  value={JSON.stringify(saveData.celestials?.pelle?.upgrades || [])}
-                  onChange={(e) => {
-                    try {
-                      const value = JSON.parse(e.target.value);
-                      handleValueChange('celestials.pelle.upgrades', value);
-                    } catch (error) {
-                      console.error("Invalid JSON:", error);
-                    }
-                  }}
+                  value={saveData.celestials?.pelle?.upgrades || []}
+                  onChange={(value) => handleValueChange('celestials.pelle.upgrades', value)}
+                  expectation="array"
+                  fallbackValue={[]}
                 />
                 {renderValidationIndicator('celestials.pelle.upgrades')}
               </div>

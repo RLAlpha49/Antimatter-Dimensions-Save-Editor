@@ -26,15 +26,23 @@ interface StructuredEditorProps {
 
 interface StructuredSectionDefinition {
   id: string;
+  group: 'Progression' | 'Systems' | 'History & options';
   title: string;
   description: string;
   Component: React.ComponentType<SectionProps>;
   issuePrefixes: string[];
 }
 
+const structuredSectionGroups: Array<StructuredSectionDefinition['group']> = [
+  'Progression',
+  'Systems',
+  'History & options',
+];
+
 const structuredSections: StructuredSectionDefinition[] = [
   {
     id: 'general',
+    group: 'Progression',
     title: 'General',
     description: 'Core progression, currencies, and top-level save values.',
     Component: GeneralSection,
@@ -56,6 +64,7 @@ const structuredSections: StructuredSectionDefinition[] = [
   },
   {
     id: 'dimensions',
+    group: 'Progression',
     title: 'Dimensions',
     description: 'Antimatter, Infinity, Time, Eternity, and Reality dimensions.',
     Component: DimensionsSection,
@@ -69,6 +78,7 @@ const structuredSections: StructuredSectionDefinition[] = [
   },
   {
     id: 'replicanti',
+    group: 'Progression',
     title: 'Replicanti',
     description: 'Replicanti settings, upgrades, and galaxy growth.',
     Component: ReplicantiSection,
@@ -76,6 +86,7 @@ const structuredSections: StructuredSectionDefinition[] = [
   },
   {
     id: 'infinity',
+    group: 'Progression',
     title: 'Infinity',
     description: 'Infinity resources, upgrades, and related progression.',
     Component: InfinitySection,
@@ -94,6 +105,7 @@ const structuredSections: StructuredSectionDefinition[] = [
   },
   {
     id: 'eternity',
+    group: 'Progression',
     title: 'Eternity',
     description: 'Eternity currencies, studies, and related progression.',
     Component: EternitySection,
@@ -108,6 +120,7 @@ const structuredSections: StructuredSectionDefinition[] = [
   },
   {
     id: 'dilation',
+    group: 'Progression',
     title: 'Dilation',
     description: 'Time dilation resources, upgrades, and rebuyables.',
     Component: DilationSection,
@@ -115,6 +128,7 @@ const structuredSections: StructuredSectionDefinition[] = [
   },
   {
     id: 'reality',
+    group: 'Progression',
     title: 'Reality',
     description: 'Reality progression, machines, and automator state.',
     Component: RealitySection,
@@ -122,6 +136,7 @@ const structuredSections: StructuredSectionDefinition[] = [
   },
   {
     id: 'glyphs',
+    group: 'Systems',
     title: 'Glyphs',
     description: 'Glyph inventory, filter state, and sacrifice progress.',
     Component: GlyphsSection,
@@ -129,6 +144,7 @@ const structuredSections: StructuredSectionDefinition[] = [
   },
   {
     id: 'celestials',
+    group: 'Systems',
     title: 'Celestials',
     description: 'Celestial progression, unlocks, and run-specific data.',
     Component: CelestialsSection,
@@ -136,6 +152,7 @@ const structuredSections: StructuredSectionDefinition[] = [
   },
   {
     id: 'black-holes',
+    group: 'Systems',
     title: 'Black Holes',
     description: 'Black hole upgrades, intervals, and state.',
     Component: BlackHolesSection,
@@ -143,6 +160,7 @@ const structuredSections: StructuredSectionDefinition[] = [
   },
   {
     id: 'challenges',
+    group: 'Systems',
     title: 'Challenges',
     description: 'Normal, Infinity, Eternity, and Reality challenge state.',
     Component: ChallengesSection,
@@ -150,6 +168,7 @@ const structuredSections: StructuredSectionDefinition[] = [
   },
   {
     id: 'autobuyers',
+    group: 'Systems',
     title: 'Autobuyers',
     description: 'Automation toggles, intervals, and purchase settings.',
     Component: AutoBuyersSection,
@@ -157,6 +176,7 @@ const structuredSections: StructuredSectionDefinition[] = [
   },
   {
     id: 'records',
+    group: 'History & options',
     title: 'Records',
     description: 'Timers, best runs, and historical milestone records.',
     Component: RecordsSection,
@@ -164,6 +184,7 @@ const structuredSections: StructuredSectionDefinition[] = [
   },
   {
     id: 'settings',
+    group: 'History & options',
     title: 'Settings',
     description: 'Options, confirmations, UI preferences, and toggles.',
     Component: SettingsSection,
@@ -221,7 +242,7 @@ const sanitizePathForId = (path: string): string => {
   return path.replace(/[^a-zA-Z0-9_-]+/g, '-');
 };
 
-const LEGACY_LABEL_ID_PREFIX = 'legacy-section-label-';
+const FIELD_LABEL_ID_PREFIX = 'field-label-';
 const LEGACY_VALIDATION_ID_PREFIX = 'legacy-validation-';
 
 const updateDescribedBy = (control: HTMLElement, validationId: string | null): void => {
@@ -266,6 +287,13 @@ const StructuredEditor: React.FC<StructuredEditorProps> = ({ isActive }) => {
       return accumulator;
     }, {});
   }, [validationIssues]);
+
+  const groupedSections = useMemo(() => {
+    return structuredSectionGroups.map((group) => ({
+      group,
+      sections: structuredSections.filter((section) => section.group === group),
+    }));
+  }, []);
 
   const renderValidationIndicator = useMemo(() => {
     return (path: string): React.ReactNode => {
@@ -312,24 +340,36 @@ const StructuredEditor: React.FC<StructuredEditorProps> = ({ isActive }) => {
     const formGroups = panelElement.querySelectorAll<HTMLElement>('.form-group');
 
     formGroups.forEach((group, index) => {
-      const label = group.querySelector<HTMLElement>('label');
+      const label = group.querySelector<HTMLLabelElement>('label');
       const controls = Array.from(group.querySelectorAll<HTMLElement>('input, select, textarea'));
       const validationIndicator = group.querySelector<HTMLElement>('[data-validation-id]');
 
       if (label) {
         if (!label.id) {
-          label.id = `${LEGACY_LABEL_ID_PREFIX}${activeSectionId}-${index}`;
+          label.id = `${FIELD_LABEL_ID_PREFIX}${activeSectionId}-${index}`;
         }
-
-        controls.forEach((control) => {
-          if (!control.getAttribute('aria-labelledby')) {
-            control.setAttribute('aria-labelledby', label.id);
-          }
-        });
       }
+
+      const compositeGroups = Array.from(group.querySelectorAll<HTMLElement>('.big-number-input[role="group"]'));
+
+      compositeGroups.forEach((compositeGroup) => {
+        if (label && !compositeGroup.getAttribute('aria-labelledby')) {
+          compositeGroup.setAttribute('aria-labelledby', label.id);
+        }
+      });
 
       controls.forEach((control) => {
         const validationId = validationIndicator?.getAttribute('data-validation-id') ?? null;
+        const isInsideCompositeGroup = Boolean(control.closest('.big-number-input[role="group"]'));
+
+        if (label?.htmlFor && controls.length === 1 && !control.id) {
+          control.id = label.htmlFor;
+        }
+
+        if (label && !isInsideCompositeGroup && !control.getAttribute('aria-labelledby') && !control.getAttribute('aria-label')) {
+          control.setAttribute('aria-labelledby', label.id);
+        }
+
         updateDescribedBy(control, validationId);
 
         if (validationId) {
@@ -368,36 +408,39 @@ const StructuredEditor: React.FC<StructuredEditorProps> = ({ isActive }) => {
             <p>Choose a save area to edit against the current document store.</p>
           </div>
 
-          <div className="section-nav-list" role="tablist" aria-orientation="vertical">
-            {structuredSections.map((section) => {
-              const isSelected = section.id === activeSection.id;
-              const issues = sectionIssues[section.id] ?? [];
-              const severityClass = issues.length > 0 ? severityClassByIssue(issues) : 'neutral';
+          {groupedSections.map(({ group, sections }) => (
+            <section key={group} className="section-nav-group" aria-label={group}>
+              <p className="section-nav-group-title">{group}</p>
+              <div className="section-nav-list">
+                {sections.map((section) => {
+                  const isSelected = section.id === activeSection.id;
+                  const issues = sectionIssues[section.id] ?? [];
+                  const severityClass = issues.length > 0 ? severityClassByIssue(issues) : 'neutral';
 
-              return (
-                <button
-                  key={section.id}
-                  type="button"
-                  role="tab"
-                  id={`${panelId}-${section.id}-tab`}
-                  className={`section-button ${isSelected ? 'active' : ''}`}
-                  onClick={() => setActiveSectionId(section.id)}
-                  aria-selected={isSelected}
-                  aria-controls={`${panelId}-${section.id}-panel`}
-                  aria-label={issues.length > 0
-                    ? `${section.title}, ${issues.length} issue${issues.length === 1 ? '' : 's'}`
-                    : `${section.title}, no issues`}
-                >
-                  <span>{section.title}</span>
-                  {issues.length > 0 && (
-                    <span className={`status-chip ${severityClass}`} aria-hidden="true">
-                      {issues.length}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                  return (
+                    <button
+                      key={section.id}
+                      type="button"
+                      id={`${panelId}-${section.id}-tab`}
+                      className={`section-button ${isSelected ? 'active' : ''}`}
+                      onClick={() => setActiveSectionId(section.id)}
+                      aria-pressed={isSelected}
+                      aria-label={issues.length > 0
+                        ? `${section.title}, ${issues.length} issue${issues.length === 1 ? '' : 's'}`
+                        : `${section.title}, no issues`}
+                    >
+                      <span>{section.title}</span>
+                      {issues.length > 0 && (
+                        <span className={`status-chip ${severityClass}`} aria-hidden="true">
+                          {issues.length}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
         </nav>
 
         <div className="section-content">
@@ -405,7 +448,7 @@ const StructuredEditor: React.FC<StructuredEditorProps> = ({ isActive }) => {
             ref={panelRef}
             id={`${panelId}-${activeSection.id}-panel`}
             className="section-pane active"
-            role="tabpanel"
+            role="region"
             aria-labelledby={`${panelId}-${activeSection.id}-tab`}
           >
             <header className="structured-editor-toolbar">

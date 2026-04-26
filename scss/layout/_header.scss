@@ -76,18 +76,19 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  background-color: var(--header-bg);
+  background: color-mix(in srgb, var(--header-bg) 95%, transparent);
   backdrop-filter: blur(10px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(var(--border-color-rgb), 0.92);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
   padding: var.$spacing-md var.$spacing-lg;
   transition: all 0.3s ease;
 
   .header-content {
     width: 100%;
-    max-width: var.$max-width;
+    max-width: 1680px;
     margin: 0 auto;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: var.$spacing-lg;
 
@@ -95,7 +96,7 @@
       padding: var.$spacing-sm;
       flex-direction: column;
       gap: var.$spacing-sm;
-      text-align: center;
+      text-align: left;
 
       h1 {
         font-size: var.$font-size-xl;
@@ -105,8 +106,8 @@
         }
       }
 
-      .header-controls {
-        justify-content: center;
+      .header-meta {
+        justify-content: stretch;
         width: 100%;
       }
     }
@@ -146,10 +147,79 @@
     }
   }
 
-  .header-controls {
+  .header-brand {
+    display: grid;
+    gap: 0.55rem;
+    min-width: 0;
+  }
+
+  .header-subtitle {
+    max-width: 48rem;
+    color: color-mix(in srgb, var(--text-color) 74%, var(--text-muted));
+    margin: 0;
+  }
+
+  .header-meta {
+    display: flex;
+    align-items: stretch;
+    gap: var.$spacing-md;
+
+    @include mix.mobile {
+      flex-direction: column;
+    }
+  }
+
+  .header-status {
+    min-width: 18rem;
+    display: grid;
+    gap: 0.4rem;
+    padding: 0.9rem 1.05rem;
+    border-radius: var.$border-radius-lg;
+    border: 1px solid rgba(var(--primary-color-rgb), 0.24);
+    background:
+      linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.16), rgba(var(--primary-color-rgb), 0.05)),
+      color-mix(in srgb, var(--card-bg) 88%, var(--header-bg));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .header-status-label {
+    margin: 0;
+    font-size: var.$font-size-xs;
+    font-weight: var.$font-weight-bold;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--primary-color);
+  }
+
+  .header-status-copy {
+    margin: 0;
+    font-size: var.$font-size-sm;
+    color: var(--text-color);
+    font-weight: var.$font-weight-medium;
+    line-height: 1.45;
+
+    &.success {
+      color: var(--success-color);
+    }
+
+    &.danger {
+      color: var(--danger-color);
+    }
+  }
+
+  .header-actions {
     display: flex;
     align-items: center;
-    gap: var.$spacing-md;
+    gap: var.$spacing-sm;
+
+    @include mix.mobile {
+      width: 100%;
+
+      .btn,
+      .github-button {
+        flex: 1;
+      }
+    }
   }
 
   .icon-button {
@@ -193,6 +263,11 @@
 
     &:active {
       transform: translateY(0);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.18);
     }
 
     i {

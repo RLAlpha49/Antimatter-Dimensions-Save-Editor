@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SectionProps } from './types';
 import { FaCircle, FaPalette, FaHistory, FaDiceD20 } from 'react-icons/fa';
+import JsonTextareaField from '../JsonTextareaField';
 import { SaveType } from '../../services/SaveService';
 import { 
   AntimatterDimensionsStruct,
@@ -35,32 +36,40 @@ const GlyphsSection: React.FC<SectionProps> = ({
         <h3>Glyphs</h3>
         
         {/* Subtabs */}
-        <div className="section-subtabs">
+        <nav className="section-subtabs" aria-label="Glyph sections">
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'settings' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('settings')}
+            aria-pressed={activeSubtab === 'settings'}
           >
-            <FaCircle className="subtab-icon" /> Settings
+            <FaCircle className="subtab-icon" aria-hidden="true" /> Settings
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'cosmetics' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('cosmetics')}
+            aria-pressed={activeSubtab === 'cosmetics'}
           >
-            <FaPalette className="subtab-icon" /> Cosmetics
+            <FaPalette className="subtab-icon" aria-hidden="true" /> Cosmetics
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'inventory' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('inventory')}
+            aria-pressed={activeSubtab === 'inventory'}
           >
-            <FaDiceD20 className="subtab-icon" /> Inventory
+            <FaDiceD20 className="subtab-icon" aria-hidden="true" /> Inventory
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'sacrifice' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('sacrifice')}
+            aria-pressed={activeSubtab === 'sacrifice'}
           >
-            <FaHistory className="subtab-icon" /> Sacrifice
+            <FaHistory className="subtab-icon" aria-hidden="true" /> Sacrifice
           </button>
-        </div>
+        </nav>
         
         {/* Settings Subtab */}
         <div className={`subtab-content ${activeSubtab === 'settings' ? 'active' : ''}`}>
@@ -160,55 +169,40 @@ const GlyphsSection: React.FC<SectionProps> = ({
           <div className="resource-group">
             <h4>Custom Cosmetics</h4>
             <div className="form-group">
-              <label htmlFor="unlocked-from-ng">Unlocked From New Game</label>
-              <textarea
+              <JsonTextareaField
                 id="unlocked-from-ng"
+                label="Unlocked From New Game"
                 rows={3}
-                value={JSON.stringify(saveData.reality?.glyphs?.cosmetics?.unlockedFromNG || [])}
-                onChange={(e) => {
-                  try {
-                    const value = JSON.parse(e.target.value);
-                    handleValueChange('reality.glyphs.cosmetics.unlockedFromNG', value);
-                  } catch (error) {
-                    console.error("Invalid JSON:", error);
-                  }
-                }}
+                value={saveData.reality?.glyphs?.cosmetics?.unlockedFromNG || []}
+                onChange={(value) => handleValueChange('reality.glyphs.cosmetics.unlockedFromNG', value)}
+                expectation="array"
+                fallbackValue={[]}
               />
               {renderValidationIndicator('reality.glyphs.cosmetics.unlockedFromNG')}
             </div>
             
             <div className="form-group">
-              <label htmlFor="symbol-map">Symbol Map</label>
-              <textarea
+              <JsonTextareaField
                 id="symbol-map"
+                label="Symbol Map"
                 rows={3}
-                value={JSON.stringify(saveData.reality?.glyphs?.cosmetics?.symbolMap || {})}
-                onChange={(e) => {
-                  try {
-                    const value = JSON.parse(e.target.value);
-                    handleValueChange('reality.glyphs.cosmetics.symbolMap', value);
-                  } catch (error) {
-                    console.error("Invalid JSON:", error);
-                  }
-                }}
+                value={saveData.reality?.glyphs?.cosmetics?.symbolMap || {}}
+                onChange={(value) => handleValueChange('reality.glyphs.cosmetics.symbolMap', value)}
+                expectation="object"
+                fallbackValue={{}}
               />
               {renderValidationIndicator('reality.glyphs.cosmetics.symbolMap')}
             </div>
             
             <div className="form-group">
-              <label htmlFor="color-map">Color Map</label>
-              <textarea
+              <JsonTextareaField
                 id="color-map"
+                label="Color Map"
                 rows={3}
-                value={JSON.stringify(saveData.reality?.glyphs?.cosmetics?.colorMap || {})}
-                onChange={(e) => {
-                  try {
-                    const value = JSON.parse(e.target.value);
-                    handleValueChange('reality.glyphs.cosmetics.colorMap', value);
-                  } catch (error) {
-                    console.error("Invalid JSON:", error);
-                  }
-                }}
+                value={saveData.reality?.glyphs?.cosmetics?.colorMap || {}}
+                onChange={(value) => handleValueChange('reality.glyphs.cosmetics.colorMap', value)}
+                expectation="object"
+                fallbackValue={{}}
               />
               {renderValidationIndicator('reality.glyphs.cosmetics.colorMap')}
             </div>
@@ -220,37 +214,29 @@ const GlyphsSection: React.FC<SectionProps> = ({
           <div className="resource-group">
             <h4>Glyph Inventory</h4>
             <div className="form-group">
-              <label htmlFor="active-glyphs">Active Glyphs</label>
-              <textarea
+              <JsonTextareaField
                 id="active-glyphs"
+                label="Active Glyphs"
                 rows={5}
-                value={JSON.stringify(saveData.reality?.glyphs?.active || [], null, 2)}
-                onChange={(e) => {
-                  try {
-                    const value = JSON.parse(e.target.value);
-                    handleValueChange('reality.glyphs.active', value);
-                  } catch (error) {
-                    console.error("Invalid JSON:", error);
-                  }
-                }}
+                value={saveData.reality?.glyphs?.active || []}
+                onChange={(value) => handleValueChange('reality.glyphs.active', value)}
+                expectation="array"
+                stringifySpace={2}
+                fallbackValue={[]}
               />
               {renderValidationIndicator('reality.glyphs.active')}
             </div>
             
             <div className="form-group">
-              <label htmlFor="inventory-glyphs">Inventory Glyphs</label>
-              <textarea
+              <JsonTextareaField
                 id="inventory-glyphs"
+                label="Inventory Glyphs"
                 rows={5}
-                value={JSON.stringify(saveData.reality?.glyphs?.inventory || [], null, 2)}
-                onChange={(e) => {
-                  try {
-                    const value = JSON.parse(e.target.value);
-                    handleValueChange('reality.glyphs.inventory', value);
-                  } catch (error) {
-                    console.error("Invalid JSON:", error);
-                  }
-                }}
+                value={saveData.reality?.glyphs?.inventory || []}
+                onChange={(value) => handleValueChange('reality.glyphs.inventory', value)}
+                expectation="array"
+                stringifySpace={2}
+                fallbackValue={[]}
               />
               {renderValidationIndicator('reality.glyphs.inventory')}
             </div>
@@ -259,19 +245,15 @@ const GlyphsSection: React.FC<SectionProps> = ({
           <div className="resource-group">
             <h4>Glyph Sets</h4>
             <div className="form-group">
-              <label htmlFor="glyph-sets">Saved Sets</label>
-              <textarea
+              <JsonTextareaField
                 id="glyph-sets"
+                label="Saved Sets"
                 rows={5}
-                value={JSON.stringify(saveData.reality?.glyphs?.sets || [], null, 2)}
-                onChange={(e) => {
-                  try {
-                    const value = JSON.parse(e.target.value);
-                    handleValueChange('reality.glyphs.sets', value);
-                  } catch (error) {
-                    console.error("Invalid JSON:", error);
-                  }
-                }}
+                value={saveData.reality?.glyphs?.sets || []}
+                onChange={(value) => handleValueChange('reality.glyphs.sets', value)}
+                expectation="array"
+                stringifySpace={2}
+                fallbackValue={[]}
               />
               {renderValidationIndicator('reality.glyphs.sets')}
             </div>
@@ -280,19 +262,15 @@ const GlyphsSection: React.FC<SectionProps> = ({
           <div className="resource-group">
             <h4>Undo History</h4>
             <div className="form-group">
-              <label htmlFor="undo-glyphs">Undo Stack</label>
-              <textarea
+              <JsonTextareaField
                 id="undo-glyphs"
+                label="Undo Stack"
                 rows={3}
-                value={JSON.stringify(saveData.reality?.glyphs?.undo || [], null, 2)}
-                onChange={(e) => {
-                  try {
-                    const value = JSON.parse(e.target.value);
-                    handleValueChange('reality.glyphs.undo', value);
-                  } catch (error) {
-                    console.error("Invalid JSON:", error);
-                  }
-                }}
+                value={saveData.reality?.glyphs?.undo || []}
+                onChange={(value) => handleValueChange('reality.glyphs.undo', value)}
+                expectation="array"
+                stringifySpace={2}
+                fallbackValue={[]}
               />
               {renderValidationIndicator('reality.glyphs.undo')}
             </div>

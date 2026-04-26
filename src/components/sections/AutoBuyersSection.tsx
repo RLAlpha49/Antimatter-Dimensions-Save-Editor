@@ -37,32 +37,40 @@ const AutoBuyersSection: React.FC<SectionProps> = ({
         <h3>Auto Buyers</h3>
         
         {/* Subtabs */}
-        <div className="section-subtabs">
+        <nav className="section-subtabs" aria-label="Auto buyer sections">
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'global' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('global')}
+            aria-pressed={activeSubtab === 'global'}
           >
-            <FaGlobe className="subtab-icon" /> Global
+            <FaGlobe className="subtab-icon" aria-hidden="true" /> Global
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'basic' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('basic')}
+            aria-pressed={activeSubtab === 'basic'}
           >
-            <FaArrowCircleRight className="subtab-icon" /> Basic
+            <FaArrowCircleRight className="subtab-icon" aria-hidden="true" /> Basic
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'dimensions' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('dimensions')}
+            aria-pressed={activeSubtab === 'dimensions'}
           >
-            <FaCube className="subtab-icon" /> Dimensions
+            <FaCube className="subtab-icon" aria-hidden="true" /> Dimensions
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'advanced' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('advanced')}
+            aria-pressed={activeSubtab === 'advanced'}
           >
-            <FaChartLine className="subtab-icon" /> Advanced
+            <FaChartLine className="subtab-icon" aria-hidden="true" /> Advanced
           </button>
-        </div>
+        </nav>
         
         {/* Global Settings Subtab */}
         <div className={`subtab-content ${activeSubtab === 'global' ? 'active' : ''}`}>
@@ -120,16 +128,19 @@ const AutoBuyersSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="auto-infinity-amount">Infinity Amount</label>
                 {isPCFormat() ? (
-                  <input
-                    type="text"
-                    id="auto-infinity-amount"
-                    value={saveData.auto?.bigCrunch?.amount?.toString() || '0'}
-                    onChange={(e) => handleValueChange('auto.bigCrunch.amount', e.target.value)}
-                  />
+                  <>
+                    <label htmlFor="auto-infinity-amount">Infinity Amount</label>
+                    <input
+                      type="text"
+                      id="auto-infinity-amount"
+                      value={saveData.auto?.bigCrunch?.amount?.toString() || '0'}
+                      onChange={(e) => handleValueChange('auto.bigCrunch.amount', e.target.value)}
+                    />
+                  </>
                 ) : (
                   <BigNumberInput
+                    label="Infinity Amount"
                     value={androidSaveData?.auto?.bigCrunch?.amount || {mantissa: 0, exponent: 0}}
                     onChange={(value) => handleValueChange('auto.bigCrunch.amount', value)}
                     saveType={saveType}

@@ -301,6 +301,13 @@ input[type="radio"] {
 // Sélecteur de thème amélioré
 .theme-selector {
   margin-bottom: 1.5rem;
+
+  .theme-selector-label {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--label-color);
+  }
   
   .theme-select {
     width: 100%;
@@ -328,6 +335,22 @@ input[type="radio"] {
   }
 }
 
+.theme-preview-header {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+
+  h4,
+  p {
+    margin: 0;
+  }
+
+  p {
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+}
+
 // Visualiseur de thèmes
 .theme-previews {
   display: grid;
@@ -341,6 +364,7 @@ input[type="radio"] {
 }
 
 .theme-preview-card {
+  display: grid;
   background-color: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: 8px;
@@ -348,6 +372,10 @@ input[type="radio"] {
   cursor: pointer;
   transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
   position: relative;
+  width: 100%;
+  padding: 0;
+  text-align: left;
+  appearance: none;
   
   &:hover {
     transform: translateY(-5px);
@@ -366,6 +394,12 @@ input[type="radio"] {
     .theme-check {
       opacity: 1;
     }
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(var(--primary-color-rgb), 0.28);
+    outline-offset: 3px;
+    border-color: var(--primary-color);
   }
   
   .theme-color-preview {
@@ -400,10 +434,18 @@ input[type="radio"] {
   
   .theme-name {
     display: block;
-    padding: 0.75rem;
-    text-align: center;
+    padding: 0.75rem 0.75rem 0.25rem;
+    text-align: left;
     font-weight: 500;
     border-top: 1px solid var(--border-color);
+  }
+
+  .theme-preview-description {
+    display: block;
+    padding: 0 0.75rem 0.9rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.45;
   }
   
   .theme-check {

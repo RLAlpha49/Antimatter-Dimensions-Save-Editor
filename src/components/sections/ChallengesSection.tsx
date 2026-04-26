@@ -36,32 +36,40 @@ const ChallengesSection: React.FC<SectionProps> = ({
         <h3>Challenges</h3>
         
         {/* Subtabs */}
-        <div className="section-subtabs">
+        <nav className="section-subtabs" aria-label="Challenge sections">
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'normal' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('normal')}
+            aria-pressed={activeSubtab === 'normal'}
           >
-            <FaTrophy className="subtab-icon" /> Normal Challenges
+            <FaTrophy className="subtab-icon" aria-hidden="true" /> Normal Challenges
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'infinity' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('infinity')}
+            aria-pressed={activeSubtab === 'infinity'}
           >
-            <FaInfinity className="subtab-icon" /> Infinity Challenges
+            <FaInfinity className="subtab-icon" aria-hidden="true" /> Infinity Challenges
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'eternity' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('eternity')}
+            aria-pressed={activeSubtab === 'eternity'}
           >
-            <FaHourglassHalf className="subtab-icon" /> Eternity Challenges
+            <FaHourglassHalf className="subtab-icon" aria-hidden="true" /> Eternity Challenges
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'challenge-values' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('challenge-values')}
+            aria-pressed={activeSubtab === 'challenge-values'}
           >
-            <FaTrophy className="subtab-icon" /> Challenge Values
+            <FaTrophy className="subtab-icon" aria-hidden="true" /> Challenge Values
           </button>
-        </div>
+        </nav>
         
         {/* Normal Challenges Subtab */}
         <div className={`subtab-content ${activeSubtab === 'normal' ? 'active' : ''}`}>
@@ -265,16 +273,19 @@ const ChallengesSection: React.FC<SectionProps> = ({
           )}
           
           <div className="form-group">
-            <label htmlFor="chall3Pow">Challenge 3 Power</label>
             {isPCFormat() ? (
-              <input
-                type="text"
-                id="chall3Pow"
-                value={pcSaveData?.chall3Pow?.toString() || '0.01'}
-                onChange={(e) => handleValueChange('chall3Pow', e.target.value)}
-              />
+              <>
+                <label htmlFor="chall3Pow">Challenge 3 Power</label>
+                <input
+                  type="text"
+                  id="chall3Pow"
+                  value={pcSaveData?.chall3Pow?.toString() || '0.01'}
+                  onChange={(e) => handleValueChange('chall3Pow', e.target.value)}
+                />
+              </>
             ) : (
               <BigNumberInput
+                label="Challenge 3 Power"
                 value={{mantissa: 0.01, exponent: 0}}
                 onChange={(value) => handleValueChange('chall3Pow', value)}
                 saveType={saveType}

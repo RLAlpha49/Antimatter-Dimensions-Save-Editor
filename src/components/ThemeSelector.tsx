@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 
 type ThemeInfo = {
@@ -10,6 +10,9 @@ type ThemeInfo = {
 
 const ThemeSelector: React.FC = () => {
   const { theme, setTheme } = useTheme();
+  const selectId = useId();
+  const descriptionId = useId();
+  const previewHeadingId = useId();
   
   const themes: ThemeInfo[] = [
     { 
@@ -50,14 +53,18 @@ const ThemeSelector: React.FC = () => {
     },
   ];
 
+  const activeTheme = themes.find((themeItem) => themeItem.id === theme) ?? themes[0];
+
   return (
     <div className="theme-settings">
       <div className="theme-selector">
+        <label className="theme-selector-label" htmlFor={selectId}>Active theme</label>
         <select 
+          id={selectId}
           className="theme-select"
           value={theme}
           onChange={(e) => setTheme(e.target.value as any)}
-          aria-label="Select a theme"
+          aria-describedby={descriptionId}
         >
           {themes.map((t) => (
             <option key={t.id} value={t.id}>
@@ -65,18 +72,24 @@ const ThemeSelector: React.FC = () => {
             </option>
           ))}
         </select>
-        <p className="theme-description">
-          {themes.find(t => t.id === theme)?.description || "Select a theme to customize the application's appearance"}
+        <p id={descriptionId} className="theme-description">
+          {activeTheme.description || "Select a theme to customize the application's appearance"}
         </p>
       </div>
+
+      <div className="theme-preview-header">
+        <h4 id={previewHeadingId}>Quick presets</h4>
+        <p>Preview each palette and switch immediately without leaving the settings workspace.</p>
+      </div>
       
-      <div className="theme-previews">
+      <div className="theme-previews" aria-labelledby={previewHeadingId}>
         {themes.map((themeItem) => (
-          <div 
+          <button
+            type="button"
             key={themeItem.id}
             className={`theme-preview-card ${themeItem.id}-theme ${theme === themeItem.id ? 'active' : ''}`}
             onClick={() => setTheme(themeItem.id as any)}
-            title={themeItem.description}
+            aria-pressed={theme === themeItem.id}
           >
             <div className="theme-color-preview">
               <div className="color-bar">
@@ -93,8 +106,9 @@ const ThemeSelector: React.FC = () => {
               </div>
             </div>
             <span className="theme-name">{themeItem.name}</span>
-            <span className="theme-check" />
-          </div>
+            {themeItem.description && <span className="theme-preview-description">{themeItem.description}</span>}
+            <span className="theme-check" aria-hidden="true" />
+          </button>
         ))}
       </div>
     </div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SectionProps } from './types';
 import { FaExpand, FaTachometerAlt, FaArrowUp } from 'react-icons/fa';
 import BigNumberInput from '../BigNumberInput';
+import JsonTextareaField from '../JsonTextareaField';
 import { SaveType } from '../../services/SaveService';
 import { 
   AntimatterDimensionsStruct,
@@ -36,26 +37,32 @@ const DilationSection: React.FC<SectionProps> = ({
         <h3>Dilation</h3>
         
         {/* Subtabs */}
-        <div className="section-subtabs">
+        <nav className="section-subtabs" aria-label="Dilation sections">
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'general' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('general')}
+            aria-pressed={activeSubtab === 'general'}
           >
-            <FaExpand className="subtab-icon" /> General
+            <FaExpand className="subtab-icon" aria-hidden="true" /> General
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'tachyons' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('tachyons')}
+            aria-pressed={activeSubtab === 'tachyons'}
           >
-            <FaTachometerAlt className="subtab-icon" /> Tachyons
+            <FaTachometerAlt className="subtab-icon" aria-hidden="true" /> Tachyons
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'upgrades' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('upgrades')}
+            aria-pressed={activeSubtab === 'upgrades'}
           >
-            <FaArrowUp className="subtab-icon" /> Upgrades
+            <FaArrowUp className="subtab-icon" aria-hidden="true" /> Upgrades
           </button>
-        </div>
+        </nav>
         
         {/* General Subtab */}
         <div className={`subtab-content ${activeSubtab === 'general' ? 'active' : ''}`}>
@@ -89,8 +96,8 @@ const DilationSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="dilation-nextThreshold">Next Threshold</label>
                 <BigNumberInput
+                  label="Next Threshold"
                   value={isPCFormat() ? (saveData.dilation?.nextThreshold || '0') : (saveData.dilation?.nextThreshold || {mantissa: 0, exponent: 0})}
                   onChange={(value) => handleValueChange('dilation.nextThreshold', value)}
                   saveType={saveType}
@@ -99,8 +106,8 @@ const DilationSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="dilation-baseDilation">Base Dilation</label>
                 <BigNumberInput
+                  label="Base Dilation"
                   value={isPCFormat() ? ((saveData.dilation as any)?.baseDilation || '0') : ((saveData.dilation as any)?.baseDilation || {mantissa: 0, exponent: 0})}
                   onChange={(value) => handleValueChange('dilation.baseDilation', value)}
                   saveType={saveType}
@@ -109,8 +116,8 @@ const DilationSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="dilation-totalTachyonParticles">Total TP</label>
                 <BigNumberInput
+                  label="Total TP"
                   value={isPCFormat() ? ((saveData.dilation as any)?.totalTachyonParticles || '0') : ((saveData.dilation as any)?.totalTachyonParticles || {mantissa: 0, exponent: 0})}
                   onChange={(value) => handleValueChange('dilation.totalTachyonParticles', value)}
                   saveType={saveType}
@@ -127,8 +134,8 @@ const DilationSection: React.FC<SectionProps> = ({
             <h4>Tachyon Particles</h4>
             <div className="dilation-grid">
               <div className="form-group">
-                <label htmlFor="dilation-tachyonParticles">Current TP</label>
                 <BigNumberInput
+                  label="Current TP"
                   value={isPCFormat() ? (saveData.dilation?.tachyonParticles || '0') : (saveData.dilation?.tachyonParticles || {mantissa: 0, exponent: 0})}
                   onChange={(value) => handleValueChange('dilation.tachyonParticles', value)}
                   saveType={saveType}
@@ -137,8 +144,8 @@ const DilationSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="dilation-dilatedTime">Dilated Time</label>
                 <BigNumberInput
+                  label="Dilated Time"
                   value={isPCFormat() ? (saveData.dilation?.dilatedTime || '0') : (saveData.dilation?.dilatedTime || {mantissa: 0, exponent: 0})}
                   onChange={(value) => handleValueChange('dilation.dilatedTime', value)}
                   saveType={saveType}
@@ -155,39 +162,27 @@ const DilationSection: React.FC<SectionProps> = ({
             <h4>Dilation Upgrades</h4>
             <div className="dilation-grid">
               <div className="form-group">
-                <label htmlFor="dilation-upgrades">Upgrades</label>
-                <textarea
+                <JsonTextareaField
                   id="dilation-upgrades"
-                  value={JSON.stringify(saveData.dilation?.upgrades || [])}
-                  onChange={(e) => {
-                    try {
-                      const upgrades = JSON.parse(e.target.value);
-                      if (Array.isArray(upgrades)) {
-                        handleValueChange('dilation.upgrades', upgrades);
-                      }
-                    } catch (error) {
-                      console.error("Invalid JSON:", error);
-                    }
-                  }}
+                  label="Upgrades"
+                  value={saveData.dilation?.upgrades || []}
+                  onChange={(value) => handleValueChange('dilation.upgrades', value)}
+                  expectation="array"
                   rows={3}
+                  fallbackValue={[]}
                 />
                 {renderValidationIndicator('dilation.upgrades')}
               </div>
               
               <div className="form-group">
-                <label htmlFor="dilation-rebuyables">Rebuyable Upgrades</label>
-                <textarea
+                <JsonTextareaField
                   id="dilation-rebuyables"
-                  value={JSON.stringify(saveData.dilation?.rebuyables || {})}
-                  onChange={(e) => {
-                    try {
-                      const rebuyables = JSON.parse(e.target.value);
-                      handleValueChange('dilation.rebuyables', rebuyables);
-                    } catch (error) {
-                      console.error("Invalid JSON:", error);
-                    }
-                  }}
+                  label="Rebuyable Upgrades"
+                  value={saveData.dilation?.rebuyables || {}}
+                  onChange={(value) => handleValueChange('dilation.rebuyables', value)}
+                  expectation="object"
                   rows={3}
+                  fallbackValue={{}}
                 />
                 {renderValidationIndicator('dilation.rebuyables')}
               </div>

@@ -5,7 +5,7 @@
 
 .app-footer {
   margin-top: auto;
-  background-color: var(--footer-bg);
+  background: linear-gradient(180deg, rgba(var(--primary-color-rgb), 0.03), transparent), var(--footer-bg);
   border-top: 1px solid var(--border-color);
   padding: var.$spacing-md;
 
@@ -39,10 +39,17 @@
   }
 
   .footer-info {
-    display: flex;
-    align-items: center;
-    gap: var.$spacing-md;
+    display: grid;
+    gap: 0.25rem;
     color: var(--text-color-secondary);
+
+    .footer-version {
+      font-weight: var.$font-weight-semibold;
+    }
+
+    .footer-disclaimer {
+      color: var(--text-muted);
+    }
 
     p {
       color: var(--text-color-secondary);

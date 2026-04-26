@@ -1,3 +1,8 @@
 # Dependencies
 node_modules/
 dist/
+.github/
+.!.github/agents/
+.!.github/instructions/
+.vscode/
+.!.vscode/

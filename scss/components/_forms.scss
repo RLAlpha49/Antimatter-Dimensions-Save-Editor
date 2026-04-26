@@ -48,7 +48,8 @@
       font-size: var.$font-size-sm;
     }
 
-    &:focus {
+    &:focus,
+    &:focus-visible {
       outline: none;
       border-color: var(--primary-color);
       box-shadow: 0 0 0 2px var(--primary-color-light);
@@ -251,7 +252,6 @@
 
 // BigNumberInput component
 .big-number-input {
-  
   .input-label {
     display: block;
     margin-bottom: 0.5rem;
@@ -263,25 +263,85 @@
   }
 
   &.android-format {
+    display: grid;
+    gap: var.$spacing-sm;
+
+    &[role='group'] {
+      padding: var.$spacing-sm;
+      border: 1px solid rgba(var(--primary-color-rgb), 0.14);
+      border-radius: var.$border-radius-md;
+      background: linear-gradient(180deg, rgba(var(--primary-color-rgb), 0.04), transparent);
+    }
+
+    .big-number-group-label {
+      margin-bottom: 0;
+      color: var(--label-color);
+    }
+
     .android-number-inputs {
-      display: flex;
-      align-items: center;
-      flex-wrap: nowrap;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 0.8fr);
+      gap: var.$spacing-sm;
+      align-items: end;
+    }
+
+    .android-number-field {
+      display: grid;
+      gap: 0.35rem;
+      min-width: 0;
+    }
+
+    .big-number-part-label {
+      margin-bottom: 0;
+      font-size: var.$font-size-xs;
+      font-weight: var.$font-weight-semibold;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-muted);
     }
 
     .mantissa-input {
-      width: 120px;
-      margin-right: 0.25rem;
+      width: 100%;
+      margin-right: 0;
     }
 
     .multiply-symbol {
-      margin: 0 0.25rem;
+      margin: 0;
       white-space: nowrap;
+      color: var(--text-muted);
+      font-weight: var.$font-weight-semibold;
+      padding-bottom: 0.75rem;
     }
 
     .exponent-input {
-      width: 80px;
-      margin-left: 0.25rem;
+      width: 100%;
+      margin-left: 0;
+    }
+
+    @include mix.mobile {
+      .android-number-inputs {
+        grid-template-columns: 1fr;
+      }
+
+      .multiply-symbol {
+        padding-bottom: 0;
+      }
     }
   }
+}
+
+.json-textarea-field {
+  display: grid;
+  gap: var.$spacing-sm;
+
+  textarea {
+    width: 100%;
+  }
+}
+
+.field-error-message {
+  margin: 0;
+  color: var(--danger-color);
+  font-size: var.$font-size-sm;
+  line-height: 1.45;
 }

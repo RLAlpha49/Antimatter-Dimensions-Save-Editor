@@ -25,26 +25,32 @@ const ReplicantiSection: React.FC<SectionProps> = ({
         <h3>Replicanti</h3>
         
         {/* Subtabs */}
-        <div className="section-subtabs">
+        <nav className="section-subtabs" aria-label="Replicanti sections">
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'settings' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('settings')}
+            aria-pressed={activeSubtab === 'settings'}
           >
-            <FaCircle className="subtab-icon" /> General
+            <FaCircle className="subtab-icon" aria-hidden="true" /> General
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'upgrades' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('upgrades')}
+            aria-pressed={activeSubtab === 'upgrades'}
           >
-            <FaDigitalTachograph className="subtab-icon" /> Upgrades
+            <FaDigitalTachograph className="subtab-icon" aria-hidden="true" /> Upgrades
           </button>
           <button 
+            type="button"
             className={`subtab-button ${activeSubtab === 'galaxies' ? 'active' : ''}`}
             onClick={() => handleSubtabClick('galaxies')}
+            aria-pressed={activeSubtab === 'galaxies'}
           >
-            <FaGlobe className="subtab-icon" /> Galaxies
+            <FaGlobe className="subtab-icon" aria-hidden="true" /> Galaxies
           </button>
-        </div>
+        </nav>
         
         {/* General Settings Subtab */}
         <div className={`subtab-content ${activeSubtab === 'settings' ? 'active' : ''}`}>
@@ -65,8 +71,8 @@ const ReplicantiSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="replicanti-amount">Amount</label>
                 <BigNumberInput
+                  label="Amount"
                   value={typedSaveData.replicanti?.amount || '0'}
                   onChange={(value) => handleValueChange('replicanti.amount', value)}
                   saveType={saveType}
@@ -109,8 +115,8 @@ const ReplicantiSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="replicanti-chanceCost">Chance Upgrade Cost</label>
                 <BigNumberInput
+                  label="Chance Upgrade Cost"
                   value={typedSaveData.replicanti?.chanceCost || '1e+150'}
                   onChange={(value) => handleValueChange('replicanti.chanceCost', value)}
                   saveType={saveType}
@@ -136,8 +142,8 @@ const ReplicantiSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="replicanti-intervalCost">Interval Upgrade Cost</label>
                 <BigNumberInput
+                  label="Interval Upgrade Cost"
                   value={typedSaveData.replicanti?.intervalCost || '1e+140'}
                   onChange={(value) => handleValueChange('replicanti.intervalCost', value)}
                   saveType={saveType}
@@ -178,8 +184,8 @@ const ReplicantiSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="replicanti-galCost">Galaxy Cost</label>
                 <BigNumberInput
+                  label="Galaxy Cost"
                   value={typedSaveData.replicanti?.galCost || '1e+170'}
                   onChange={(value) => handleValueChange('replicanti.galCost', value)}
                   saveType={saveType}

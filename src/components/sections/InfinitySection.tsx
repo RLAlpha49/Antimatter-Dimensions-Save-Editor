@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { SectionProps } from './types';
+import SectionShell, { SectionShellTab } from './SectionShell';
 import { FaCircle, FaArrowUp, FaTrophy } from 'react-icons/fa';
 import BigNumberInput from '../BigNumberInput';
+import JsonTextareaField from '../JsonTextareaField';
 import { SaveType } from '../../services/SaveService';
 import { 
   AntimatterDimensionsStruct,
@@ -30,32 +32,20 @@ const InfinitySection: React.FC<SectionProps> = ({
   const pcSaveData = isPCFormat() ? saveData as AntimatterDimensionsStruct : null;
   const androidSaveData = !isPCFormat() ? saveData as AntimatterDimensionsStructAndroid : null;
 
+  const tabs: SectionShellTab[] = [
+    { id: 'general', title: 'General', icon: <FaCircle className="subtab-icon" /> },
+    { id: 'upgrades', title: 'Upgrades', icon: <FaArrowUp className="subtab-icon" /> },
+    { id: 'challenges', title: 'Challenges', icon: <FaTrophy className="subtab-icon" /> },
+  ];
+
   return (
-    <div className="section-pane active" id="infinity">
-      <div className="section-content">
-        <h3>Infinity</h3>
-        
-        {/* Subtabs */}
-        <div className="section-subtabs">
-          <button 
-            className={`subtab-button ${activeSubtab === 'general' ? 'active' : ''}`}
-            onClick={() => handleSubtabClick('general')}
-          >
-            <FaCircle className="subtab-icon" /> General
-          </button>
-          <button 
-            className={`subtab-button ${activeSubtab === 'upgrades' ? 'active' : ''}`}
-            onClick={() => handleSubtabClick('upgrades')}
-          >
-            <FaArrowUp className="subtab-icon" /> Upgrades
-          </button>
-          <button 
-            className={`subtab-button ${activeSubtab === 'challenges' ? 'active' : ''}`}
-            onClick={() => handleSubtabClick('challenges')}
-          >
-            <FaTrophy className="subtab-icon" /> Challenges
-          </button>
-        </div>
+    <SectionShell
+      id="infinity"
+      title="Infinity"
+      tabs={tabs}
+      activeTab={activeSubtab}
+      onTabChange={handleSubtabClick}
+    >
         
         {/* General Subtab */}
         <div className={`subtab-content ${activeSubtab === 'general' ? 'active' : ''}`}>
@@ -63,8 +53,8 @@ const InfinitySection: React.FC<SectionProps> = ({
             <h4>Infinity Resources</h4>
             <div className="infinity-grid">
               <div className="form-group">
-                <label htmlFor="infinityPoints">Infinity Points</label>
                 <BigNumberInput
+                  label="Infinity Points"
                   value={isPCFormat() ? 
                     (pcSaveData?.infinityPoints || '0') : 
                     (androidSaveData?.infinity?.points || {mantissa: 0, exponent: 0})}
@@ -76,8 +66,8 @@ const InfinitySection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="infinities">Infinities</label>
                 <BigNumberInput
+                  label="Infinities"
                   value={isPCFormat() ? 
                     (pcSaveData?.infinities || '0') : 
                     (androidSaveData?.antimatter?.infinitied || {mantissa: 0, exponent: 0})}
@@ -90,8 +80,8 @@ const InfinitySection: React.FC<SectionProps> = ({
               
               {isPCFormat() && (
                 <div className="form-group">
-                  <label htmlFor="infinitiesBanked">Infinities Banked</label>
                   <BigNumberInput
+                    label="Infinities Banked"
                     value={pcSaveData?.infinitiesBanked || '0'}
                     onChange={(value) => handleValueChange('infinitiesBanked', value)}
                     saveType={saveType}
@@ -101,8 +91,8 @@ const InfinitySection: React.FC<SectionProps> = ({
               )}
               
               <div className="form-group">
-                <label htmlFor="infinityPower">Infinity Power</label>
                 <BigNumberInput
+                  label="Infinity Power"
                   value={saveData.infinityPower || (saveType === SaveType.PC ? '0' : {mantissa: 0, exponent: 0})}
                   onChange={(value) => handleValueChange('infinityPower', value)}
                   saveType={saveType}
@@ -194,19 +184,14 @@ const InfinitySection: React.FC<SectionProps> = ({
               
               {!isPCFormat() && (
                 <div className="form-group">
-                  <label htmlFor="inf-upgrades">Infinity Upgrades</label>
-                  <textarea
+                  <JsonTextareaField
                     id="inf-upgrades"
+                    label="Infinity Upgrades"
+                    value={androidSaveData?.infinity?.upgrades || []}
+                    onChange={(value) => handleValueChange('infinity.upgrades', value)}
+                    expectation="array"
                     rows={3}
-                    value={JSON.stringify(androidSaveData?.infinity?.upgrades || [])}
-                    onChange={(e) => {
-                      try {
-                        const value = JSON.parse(e.target.value);
-                        handleValueChange('infinity.upgrades', value);
-                      } catch (error) {
-                        console.error("Invalid JSON:", error);
-                      }
-                    }}
+                    fallbackValue={[]}
                   />
                   {renderValidationIndicator('infinity.upgrades')}
                 </div>
@@ -307,8 +292,7 @@ const InfinitySection: React.FC<SectionProps> = ({
           </div>
         </div>
         
-      </div>
-    </div>
+    </SectionShell>
   );
 };
 

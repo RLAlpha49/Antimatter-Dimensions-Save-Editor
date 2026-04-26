@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { SectionProps } from './types';
+import SectionShell, { SectionShellTab } from './SectionShell';
 import { FaSun, FaArrowUp, FaRobot, FaSlidersH } from 'react-icons/fa';
 import BigNumberInput from '../BigNumberInput';
 import { SaveType } from '../../services/SaveService';
@@ -32,38 +33,21 @@ const RealitySection: React.FC<SectionProps> = ({
   // Use typedSaveData to bypass type checking for properties that exist at runtime but aren't in the type definitions
   const typedSaveData = saveData as any;
 
+  const tabs: SectionShellTab[] = [
+    { id: 'general', title: 'General', icon: <FaSun className="subtab-icon" /> },
+    { id: 'upgrades', title: 'Upgrades', icon: <FaArrowUp className="subtab-icon" /> },
+    { id: 'automator', title: 'Automator', icon: <FaRobot className="subtab-icon" /> },
+    { id: 'settings', title: 'Settings', icon: <FaSlidersH className="subtab-icon" /> },
+  ];
+
   return (
-    <div className="section-pane active" id="reality">
-      <div className="section-content">
-        <h3>Reality</h3>
-        
-        {/* Subtabs */}
-        <div className="section-subtabs">
-          <button 
-            className={`subtab-button ${activeSubtab === 'general' ? 'active' : ''}`}
-            onClick={() => handleSubtabClick('general')}
-          >
-            <FaSun className="subtab-icon" /> General
-          </button>
-          <button 
-            className={`subtab-button ${activeSubtab === 'upgrades' ? 'active' : ''}`}
-            onClick={() => handleSubtabClick('upgrades')}
-          >
-            <FaArrowUp className="subtab-icon" /> Upgrades
-          </button>
-          <button 
-            className={`subtab-button ${activeSubtab === 'automator' ? 'active' : ''}`}
-            onClick={() => handleSubtabClick('automator')}
-          >
-            <FaRobot className="subtab-icon" /> Automator
-          </button>
-          <button 
-            className={`subtab-button ${activeSubtab === 'settings' ? 'active' : ''}`}
-            onClick={() => handleSubtabClick('settings')}
-          >
-            <FaSlidersH className="subtab-icon" /> Settings
-          </button>
-        </div>
+    <SectionShell
+      id="reality"
+      title="Reality"
+      tabs={tabs}
+      activeTab={activeSubtab}
+      onTabChange={handleSubtabClick}
+    >
         
         {/* General Reality Resources Subtab */}
         <div className={`subtab-content ${activeSubtab === 'general' ? 'active' : ''}`}>
@@ -71,16 +55,19 @@ const RealitySection: React.FC<SectionProps> = ({
             <h4>Reality Resources</h4>
             <div className="reality-grid">
               <div className="form-group">
-                <label htmlFor="realities">Realities</label>
                 {isPCFormat() ? (
-                  <input
-                    type="number"
-                    id="realities"
-                    value={saveData.realities || 0}
-                    onChange={(e) => handleValueChange('realities', parseInt(e.target.value))}
-                  />
+                  <>
+                    <label htmlFor="realities">Realities</label>
+                    <input
+                      type="number"
+                      id="realities"
+                      value={saveData.realities || 0}
+                      onChange={(e) => handleValueChange('realities', parseInt(e.target.value))}
+                    />
+                  </>
                 ) : (
                   <BigNumberInput 
+                    label="Realities"
                     value={androidSaveData?.realities || {mantissa: 0, exponent: 0}} 
                     onChange={(value) => handleValueChange('realities', value)}
                     saveType={saveType}
@@ -102,8 +89,8 @@ const RealitySection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="reality-realityMachines">Reality Machines</label>
                 <BigNumberInput
+                  label="Reality Machines"
                   value={saveData.reality?.realityMachines || (isPCFormat() ? '0' : {mantissa: 0, exponent: 0})}
                   onChange={(value) => handleValueChange('reality.realityMachines', value)}
                   saveType={saveType}
@@ -190,8 +177,8 @@ const RealitySection: React.FC<SectionProps> = ({
             <h4>Eternity Continuity</h4>
             <div className="reality-grid">
               <div className="form-group">
-                <label htmlFor="reality-partEternitied">Partial Eternitied</label>
                 <BigNumberInput
+                  label="Partial Eternitied"
                   value={saveData.reality?.partEternitied || (isPCFormat() ? '0' : {mantissa: 0, exponent: 0})}
                   onChange={(value) => handleValueChange('reality.partEternitied', value)}
                   saveType={saveType}
@@ -339,8 +326,7 @@ const RealitySection: React.FC<SectionProps> = ({
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </SectionShell>
   );
 };
 

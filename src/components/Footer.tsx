@@ -6,7 +6,8 @@ const Footer: React.FC = () => {
     <footer className="app-footer" role="contentinfo">
       <div className="footer-content">
         <div className="footer-info">
-          <p>Version <span>v2.0.0-BETA-4</span></p>
+          <p className="footer-version">Version <span>v2.0.0-BETA-4</span></p>
+          <p className="footer-disclaimer">Independent editor workflow for Antimatter Dimensions saves.</p>
         </div>
         <div className="footer-links">
           <a 

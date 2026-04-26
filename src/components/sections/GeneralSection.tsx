@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { SectionProps } from './types';
+import SectionShell, { SectionShellTab } from './SectionShell';
 import { FaSuperscript, FaInfinity, FaHourglassHalf, FaSun } from 'react-icons/fa';
 import BigNumberInput from '../BigNumberInput';
 import { SaveType } from '../../services/SaveService';
@@ -58,38 +59,21 @@ const GeneralSection: React.FC<SectionProps> = ({
     return defaultValue;
   };
 
+  const tabs: SectionShellTab[] = [
+    { id: 'antimatter', title: 'Antimatter', icon: <FaSuperscript className="subtab-icon" /> },
+    { id: 'infinity', title: 'Infinity', icon: <FaInfinity className="subtab-icon" /> },
+    { id: 'eternity', title: 'Eternity', icon: <FaHourglassHalf className="subtab-icon" /> },
+    { id: 'reality', title: 'Reality', icon: <FaSun className="subtab-icon" /> },
+  ];
+
   return (
-    <div className="section-pane active" id="general">
-      <div className="section-content">
-        <h3>Main Resources</h3>
-        
-        {/* Subtabs */}
-        <div className="section-subtabs">
-          <button 
-            className={`subtab-button ${activeSubtab === 'antimatter' ? 'active' : ''}`}
-            onClick={() => handleSubtabClick('antimatter')}
-          >
-            <FaSuperscript className="subtab-icon" /> Antimatter
-          </button>
-          <button 
-            className={`subtab-button ${activeSubtab === 'infinity' ? 'active' : ''}`}
-            onClick={() => handleSubtabClick('infinity')}
-          >
-            <FaInfinity className="subtab-icon" /> Infinity
-          </button>
-          <button 
-            className={`subtab-button ${activeSubtab === 'eternity' ? 'active' : ''}`}
-            onClick={() => handleSubtabClick('eternity')}
-          >
-            <FaHourglassHalf className="subtab-icon" /> Eternity
-          </button>
-          <button 
-            className={`subtab-button ${activeSubtab === 'reality' ? 'active' : ''}`}
-            onClick={() => handleSubtabClick('reality')}
-          >
-            <FaSun className="subtab-icon" /> Reality
-          </button>
-        </div>
+    <SectionShell
+      id="general"
+      title="Main Resources"
+      tabs={tabs}
+      activeTab={activeSubtab}
+      onTabChange={handleSubtabClick}
+    >
         
         {/* Antimatter Subtab */}
         <div className={`subtab-content ${activeSubtab === 'antimatter' ? 'active' : ''}`}>
@@ -97,8 +81,8 @@ const GeneralSection: React.FC<SectionProps> = ({
             <h4>Antimatter</h4>
             <div className="general-grid">
               <div className="form-group">
-                <label htmlFor="antimatter">Antimatter</label>
                 <BigNumberInput 
+                  label="Antimatter"
                   value={saveData.antimatter} 
                   onChange={(value) => handleValueChange('antimatter', value)} 
                   saveType={saveType}
@@ -107,8 +91,8 @@ const GeneralSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="matter">Matter</label>
                 <BigNumberInput 
+                  label="Matter"
                   value={saveData.matter} 
                   onChange={(value) => handleValueChange('matter', value)}
                   saveType={saveType}
@@ -189,8 +173,8 @@ const GeneralSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="sacrificed">Dimensional Sacrifice</label>
                 <BigNumberInput 
+                  label="Dimensional Sacrifice"
                   value={saveData.sacrificed} 
                   onChange={(value) => handleValueChange('sacrificed', value)}
                   saveType={saveType}
@@ -219,8 +203,8 @@ const GeneralSection: React.FC<SectionProps> = ({
             <h4>Infinity</h4>
             <div className="general-grid">
               <div className="form-group">
-                <label htmlFor="infinityPoints">Infinity Points</label>
                 <BigNumberInput 
+                  label="Infinity Points"
                   value={saveData.infinityPoints || (saveType === SaveType.PC ? '0' : {mantissa: 0, exponent: 0})} 
                   onChange={(value) => handleValueChange('infinityPoints', value)}
                   saveType={saveType}
@@ -229,8 +213,8 @@ const GeneralSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="infinities">Infinities</label>
                 <BigNumberInput 
+                  label="Infinities"
                   value={saveData.infinities || (saveType === SaveType.PC ? '0' : {mantissa: 0, exponent: 0})} 
                   onChange={(value) => handleValueChange('infinities', value)}
                   saveType={saveType}
@@ -240,8 +224,8 @@ const GeneralSection: React.FC<SectionProps> = ({
               
               {saveType === SaveType.PC && (
                 <div className="form-group">
-                  <label htmlFor="infinitiesBanked">Banked Infinities</label>
                   <BigNumberInput 
+                    label="Banked Infinities"
                     value={getPCData()?.infinitiesBanked || '0'} 
                     onChange={(value) => handleValueChange('infinitiesBanked', value)}
                     saveType={saveType}
@@ -277,8 +261,8 @@ const GeneralSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="infinityPower">Infinity Power</label>
                 <BigNumberInput 
+                  label="Infinity Power"
                   value={saveData.infinityPower || (saveType === SaveType.PC ? '0' : {mantissa: 0, exponent: 0})} 
                   onChange={(value) => handleValueChange('infinityPower', value)}
                   saveType={saveType}
@@ -295,8 +279,8 @@ const GeneralSection: React.FC<SectionProps> = ({
             <h4>Eternity</h4>
             <div className="general-grid">
               <div className="form-group">
-                <label htmlFor="eternityPoints">Eternity Points</label>
                 <BigNumberInput 
+                  label="Eternity Points"
                   value={saveData.eternityPoints} 
                   onChange={(value) => handleValueChange('eternityPoints', value)}
                   saveType={saveType}
@@ -305,8 +289,8 @@ const GeneralSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="eternities">Eternities</label>
                 <BigNumberInput 
+                  label="Eternities"
                   value={saveData.eternities} 
                   onChange={(value) => handleValueChange('eternities', value)}
                   saveType={saveType}
@@ -315,8 +299,8 @@ const GeneralSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="timeShards">Time Shards</label>
                 <BigNumberInput 
+                  label="Time Shards"
                   value={saveData.timeShards} 
                   onChange={(value) => handleValueChange('timeShards', value)}
                   saveType={saveType}
@@ -357,17 +341,20 @@ const GeneralSection: React.FC<SectionProps> = ({
             <h4>Reality</h4>
             <div className="general-grid">
               <div className="form-group">
-                <label htmlFor="realities">Realities</label>
                 {saveType === SaveType.PC ? (
-                  <input 
-                    type="number" 
-                    id="realities" 
-                    name="realities"
-                    value={typeof saveData.realities === 'number' ? saveData.realities : 0}
-                    onChange={(e) => handleValueChange('realities', parseInt(e.target.value))}
-                  />
+                  <>
+                    <label htmlFor="realities">Realities</label>
+                    <input 
+                      type="number" 
+                      id="realities" 
+                      name="realities"
+                      value={typeof saveData.realities === 'number' ? saveData.realities : 0}
+                      onChange={(e) => handleValueChange('realities', parseInt(e.target.value))}
+                    />
+                  </>
                 ) : (
                   <BigNumberInput 
+                    label="Realities"
                     value={saveData.realities} 
                     onChange={(value) => handleValueChange('realities', value)}
                     saveType={saveType}
@@ -392,8 +379,8 @@ const GeneralSection: React.FC<SectionProps> = ({
               
               {saveType === SaveType.Android && (
                 <div className="form-group">
-                  <label htmlFor="reality.realityMachines">Reality Machines</label>
                   <BigNumberInput 
+                    label="Reality Machines"
                     value={saveData.reality?.realityMachines} 
                     onChange={(value) => handleValueChange('reality.realityMachines', value)}
                     saveType={saveType}
@@ -427,17 +414,20 @@ const GeneralSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="reality.perkPoints">Perk Points</label>
                 {saveType === SaveType.PC ? (
-                  <input 
-                    type="number" 
-                    id="reality.perkPoints" 
-                    name="reality.perkPoints"
-                    value={typeof saveData.reality?.perkPoints === 'number' ? saveData.reality?.perkPoints : 0}
-                    onChange={(e) => handleValueChange('reality.perkPoints', parseInt(e.target.value))}
-                  />
+                  <>
+                    <label htmlFor="reality.perkPoints">Perk Points</label>
+                    <input 
+                      type="number" 
+                      id="reality.perkPoints" 
+                      name="reality.perkPoints"
+                      value={typeof saveData.reality?.perkPoints === 'number' ? saveData.reality?.perkPoints : 0}
+                      onChange={(e) => handleValueChange('reality.perkPoints', parseInt(e.target.value))}
+                    />
+                  </>
                 ) : (
                   <BigNumberInput 
+                    label="Perk Points"
                     value={saveData.reality?.perkPoints}
                     onChange={(value) => handleValueChange('reality.perkPoints', value)}
                     saveType={saveType}
@@ -448,8 +438,7 @@ const GeneralSection: React.FC<SectionProps> = ({
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </SectionShell>
   );
 };
 

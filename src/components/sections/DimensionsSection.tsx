@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { SectionProps } from './types';
+import SectionShell, { SectionShellTab } from './SectionShell';
 import { 
   FaCube, 
   FaInfinity, 
@@ -27,48 +28,26 @@ const DimensionsSection: React.FC<SectionProps> = ({
   // Helper function to safely check if we're using PC structure
   const isPC = () => saveType === SaveType.PC;
 
+  const tabs: SectionShellTab[] = [
+    { id: 'antimatter', title: 'Antimatter', icon: <FaCube className="subtab-icon" /> },
+    { id: 'infinity', title: 'Infinity', icon: <FaInfinity className="subtab-icon" /> },
+    { id: 'time', title: 'Time', icon: <FaClock className="subtab-icon" /> },
+    ...(isPC()
+      ? [
+          { id: 'eternity', title: 'Eternity', icon: <FaHourglassHalf className="subtab-icon" /> },
+          { id: 'reality', title: 'Reality', icon: <FaSun className="subtab-icon" /> },
+        ]
+      : []),
+  ];
+
   return (
-    <div className="section-pane active" id="dimensions">
-      <div className="section-content">
-        <h3>Dimensions</h3>
-        
-        {/* Subtabs */}
-        <div className="section-subtabs">
-          <button 
-            className={`subtab-button ${activeSubtab === 'antimatter' ? 'active' : ''}`}
-            onClick={() => handleSubtabClick('antimatter')}
-          >
-            <FaCube className="subtab-icon" /> Antimatter
-          </button>
-          <button 
-            className={`subtab-button ${activeSubtab === 'infinity' ? 'active' : ''}`}
-            onClick={() => handleSubtabClick('infinity')}
-          >
-            <FaInfinity className="subtab-icon" /> Infinity
-          </button>
-          <button 
-            className={`subtab-button ${activeSubtab === 'time' ? 'active' : ''}`}
-            onClick={() => handleSubtabClick('time')}
-          >
-            <FaClock className="subtab-icon" /> Time
-          </button>
-          {isPC() && (
-            <>
-              <button 
-                className={`subtab-button ${activeSubtab === 'eternity' ? 'active' : ''}`}
-                onClick={() => handleSubtabClick('eternity')}
-              >
-                <FaHourglassHalf className="subtab-icon" /> Eternity
-              </button>
-              <button 
-                className={`subtab-button ${activeSubtab === 'reality' ? 'active' : ''}`}
-                onClick={() => handleSubtabClick('reality')}
-              >
-                <FaSun className="subtab-icon" /> Reality
-              </button>
-            </>
-          )}
-        </div>
+    <SectionShell
+      id="dimensions"
+      title="Dimensions"
+      tabs={tabs}
+      activeTab={activeSubtab}
+      onTabChange={handleSubtabClick}
+    >
         
         {/* Antimatter Dimensions Subtab */}
         <div className={`subtab-content ${activeSubtab === 'antimatter' ? 'active' : ''}`}>
@@ -77,8 +56,8 @@ const DimensionsSection: React.FC<SectionProps> = ({
               <div className="dimension-group" key={`antimatter-${i+1}`}>
                 <h4>Antimatter Dimension {i+1}</h4>
                 <div className="form-group">
-                  <label htmlFor={`antimatter-${i+1}-amount`}>Amount</label>
                   <BigNumberInput
+                    label="Amount"
                     value={isPC() ? (saveData.dimensions?.antimatter?.[i]?.amount?.toString() || '0') : (saveData.dimensions?.antimatter?.[i]?.amount || {mantissa: 0, exponent: 0})}
                     onChange={(value) => handleValueChange(`dimensions.antimatter[${i}].amount`, value)}
                     saveType={saveType}
@@ -119,8 +98,8 @@ const DimensionsSection: React.FC<SectionProps> = ({
               <div className="dimension-group" key={`infinity-${i+1}`}>
                 <h4>Infinity Dimension {i+1}</h4>
                 <div className="form-group">
-                  <label htmlFor={`infinity-${i+1}-amount`}>Amount</label>
                   <BigNumberInput
+                    label="Amount"
                     value={isPC() ? (saveData.dimensions?.infinity?.[i]?.amount?.toString() || '0') : (saveData.dimensions?.infinity?.[i]?.amount || {mantissa: 0, exponent: 0})}
                     onChange={(value) => handleValueChange(`dimensions.infinity[${i}].amount`, value)}
                     saveType={saveType}
@@ -140,8 +119,8 @@ const DimensionsSection: React.FC<SectionProps> = ({
                 </div>
                 
                 <div className="form-group">
-                  <label htmlFor={`infinity-${i+1}-cost`}>Cost</label>
                   <BigNumberInput
+                    label="Cost"
                     value={isPC() ? (saveData.dimensions?.infinity?.[i]?.cost?.toString() || '0') : (saveData.dimensions?.infinity?.[i]?.cost || {mantissa: 0, exponent: 0})}
                     onChange={(value) => handleValueChange(`dimensions.infinity[${i}].cost`, value)}
                     saveType={saveType}
@@ -184,8 +163,8 @@ const DimensionsSection: React.FC<SectionProps> = ({
               <div className="dimension-group" key={`time-${i+1}`}>
                 <h4>Time Dimension {i+1}</h4>
                 <div className="form-group">
-                  <label htmlFor={`time-${i+1}-amount`}>Amount</label>
                   <BigNumberInput
+                    label="Amount"
                     value={isPC() ? (saveData.dimensions?.time?.[i]?.amount?.toString() || '0') : (saveData.dimensions?.time?.[i]?.amount || {mantissa: 0, exponent: 0})}
                     onChange={(value) => handleValueChange(`dimensions.time[${i}].amount`, value)}
                     saveType={saveType}
@@ -205,8 +184,8 @@ const DimensionsSection: React.FC<SectionProps> = ({
                 </div>
                 
                 <div className="form-group">
-                  <label htmlFor={`time-${i+1}-cost`}>Cost</label>
                   <BigNumberInput
+                    label="Cost"
                     value={isPC() ? (saveData.dimensions?.time?.[i]?.cost?.toString() || '0') : (saveData.dimensions?.time?.[i]?.cost || {mantissa: 0, exponent: 0})}
                     onChange={(value) => handleValueChange(`dimensions.time[${i}].cost`, value)}
                     saveType={saveType}
@@ -226,8 +205,8 @@ const DimensionsSection: React.FC<SectionProps> = ({
                 <div className="dimension-group" key={`eternity-${i+1}`}>
                   <h4>Eternity Dimension {i+1}</h4>
                   <div className="form-group">
-                    <label htmlFor={`eternity-${i+1}-amount`}>Amount</label>
                     <BigNumberInput
+                      label="Amount"
                       // Type assertion to handle PC-specific structure
                       value={(saveData as any).eternityDimensions?.[i]?.amount?.toString() || '0'}
                       onChange={(value) => handleValueChange(`eternityDimensions[${i}].amount`, value)}
@@ -271,8 +250,8 @@ const DimensionsSection: React.FC<SectionProps> = ({
                 <div className="dimension-group" key={`reality-${i+1}`}>
                   <h4>Reality Dimension {i+1}</h4>
                   <div className="form-group">
-                    <label htmlFor={`reality-${i+1}-amount`}>Amount</label>
                     <BigNumberInput
+                      label="Amount"
                       // Type assertion to handle PC-specific structure
                       value={(saveData as any).realityDimensions?.[i]?.amount?.toString() || '0'}
                       onChange={(value) => handleValueChange(`realityDimensions[${i}].amount`, value)}
@@ -309,8 +288,7 @@ const DimensionsSection: React.FC<SectionProps> = ({
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </SectionShell>
   );
 };
 

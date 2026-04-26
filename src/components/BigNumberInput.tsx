@@ -17,6 +17,15 @@ type AndroidBigNumber = {
   exponent: number;
 };
 
+const joinDescribedBy = (...values: Array<string | undefined>): string | undefined => {
+  const tokens = values
+    .flatMap((value) => (value ?? '').split(/\s+/))
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return tokens.length > 0 ? tokens.join(' ') : undefined;
+};
+
 const isAndroidBigNumber = (value: unknown): value is AndroidBigNumber => {
   return typeof value === 'object'
     && value !== null
@@ -73,18 +82,14 @@ const BigNumberInput: React.FC<BigNumberInputProps> = ({
 }) => {
   const baseId = useId();
   const inputId = `${baseId}-value`;
+  const groupLabelId = `${baseId}-group-label`;
   const mantissaId = `${baseId}-mantissa`;
   const exponentId = `${baseId}-exponent`;
+  const mantissaLabelId = `${baseId}-mantissa-label`;
+  const exponentLabelId = `${baseId}-exponent-label`;
   const [pcDraft, setPcDraft] = useState<string>(() => formatPcDraft(value));
   const [mantissaDraft, setMantissaDraft] = useState<string>(() => formatMantissaDraft(value));
   const [exponentDraft, setExponentDraft] = useState<string>(() => formatExponentDraft(value));
-
-  useEffect(() => {
-    if (value && typeof value === 'object' && !isAndroidBigNumber(value)) {
-      console.warn('Invalid object value passed to BigNumberInput:', value);
-      console.warn('Component stack trace:', new Error().stack);
-    }
-  }, [value]);
 
   useEffect(() => {
     setPcDraft(formatPcDraft(value));
@@ -95,6 +100,10 @@ const BigNumberInput: React.FC<BigNumberInputProps> = ({
     setExponentDraft(formatExponentDraft(value));
   }, [value, saveType]);
 
+  const restorePcDraft = () => {
+    setPcDraft(formatPcDraft(value));
+  };
+
   const restoreAndroidDrafts = () => {
     setMantissaDraft(formatMantissaDraft(value));
     setExponentDraft(formatExponentDraft(value));
@@ -104,7 +113,7 @@ const BigNumberInput: React.FC<BigNumberInputProps> = ({
     const nextValue = pcDraft.trim();
 
     if (!nextValue) {
-      setPcDraft(formatPcDraft(value));
+      restorePcDraft();
       return;
     }
 
@@ -138,7 +147,7 @@ const BigNumberInput: React.FC<BigNumberInputProps> = ({
   if (saveType === SaveType.PC) {
     return (
       <div className={`big-number-input pc-format ${className}`}>
-        {label && <label className="input-label" htmlFor={inputId}>{label}</label>}
+        {label && <label id={groupLabelId} className="input-label" htmlFor={inputId}>{label}</label>}
         <input
           id={inputId}
           type="text"
@@ -150,10 +159,20 @@ const BigNumberInput: React.FC<BigNumberInputProps> = ({
               event.preventDefault();
               commitPcDraft();
             }
+
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              restorePcDraft();
+            }
           }}
           className="input-field"
           disabled={disabled}
+          autoComplete="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          inputMode="decimal"
           aria-describedby={describedBy}
+          aria-labelledby={label ? groupLabelId : undefined}
           aria-invalid={invalid}
         />
       </div>
@@ -162,47 +181,70 @@ const BigNumberInput: React.FC<BigNumberInputProps> = ({
   
   // Handle Android format (object with mantissa and exponent)
   return (
-    <div className={`big-number-input android-format ${className}`}>
-      {label && <label className="input-label" htmlFor={mantissaId}>{label}</label>}
+    <div
+      className={`big-number-input android-format ${className}`}
+      role="group"
+      aria-labelledby={label ? groupLabelId : undefined}
+      aria-describedby={describedBy}
+    >
+      {label && <p id={groupLabelId} className="input-label big-number-group-label">{label}</p>}
       <div className="android-number-inputs">
-        <input
-          id={mantissaId}
-          type="number"
-          className="mantissa-input"
-          value={mantissaDraft}
-          onChange={(e) => setMantissaDraft(e.target.value)}
-          onBlur={commitAndroidDraft}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              commitAndroidDraft();
-            }
-          }}
-          step="0.01"
-          disabled={disabled}
-          aria-label={label ? `${label} mantissa` : 'Mantissa'}
-          aria-describedby={describedBy}
-          aria-invalid={invalid}
-        />
-        <span className="multiply-symbol">x10</span>
-        <input
-          id={exponentId}
-          type="number"
-          className="exponent-input"
-          value={exponentDraft}
-          onChange={(e) => setExponentDraft(e.target.value)}
-          onBlur={commitAndroidDraft}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              commitAndroidDraft();
-            }
-          }}
-          disabled={disabled}
-          aria-label={label ? `${label} exponent` : 'Exponent'}
-          aria-describedby={describedBy}
-          aria-invalid={invalid}
-        />
+        <div className="android-number-field">
+          <label id={mantissaLabelId} className="big-number-part-label" htmlFor={mantissaId}>Mantissa</label>
+          <input
+            id={mantissaId}
+            type="number"
+            className="mantissa-input"
+            value={mantissaDraft}
+            onChange={(e) => setMantissaDraft(e.target.value)}
+            onBlur={commitAndroidDraft}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                commitAndroidDraft();
+              }
+
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                restoreAndroidDrafts();
+              }
+            }}
+            step="0.01"
+            disabled={disabled}
+            inputMode="decimal"
+            aria-describedby={joinDescribedBy(describedBy)}
+            aria-labelledby={joinDescribedBy(label ? groupLabelId : undefined, mantissaLabelId)}
+            aria-invalid={invalid}
+          />
+        </div>
+        <span className="multiply-symbol" aria-hidden="true">x10</span>
+        <div className="android-number-field">
+          <label id={exponentLabelId} className="big-number-part-label" htmlFor={exponentId}>Exponent</label>
+          <input
+            id={exponentId}
+            type="number"
+            className="exponent-input"
+            value={exponentDraft}
+            onChange={(e) => setExponentDraft(e.target.value)}
+            onBlur={commitAndroidDraft}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                commitAndroidDraft();
+              }
+
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                restoreAndroidDrafts();
+              }
+            }}
+            disabled={disabled}
+            inputMode="decimal"
+            aria-describedby={joinDescribedBy(describedBy)}
+            aria-labelledby={joinDescribedBy(label ? groupLabelId : undefined, exponentLabelId)}
+            aria-invalid={invalid}
+          />
+        </div>
       </div>
     </div>
   );

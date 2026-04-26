@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { SectionProps } from './types';
+import SectionShell, { SectionShellTab } from './SectionShell';
 import { FaHourglassHalf, FaArrowUp, FaTrophy, FaGem } from 'react-icons/fa';
 import BigNumberInput from '../BigNumberInput';
+import JsonTextareaField from '../JsonTextareaField';
 
 const EternitySection: React.FC<SectionProps> = ({
   saveData,
@@ -16,32 +18,20 @@ const EternitySection: React.FC<SectionProps> = ({
     setActiveSubtab(subtabId);
   };
 
+  const tabs: SectionShellTab[] = [
+    { id: 'general', title: 'General', icon: <FaHourglassHalf className="subtab-icon" /> },
+    { id: 'studies', title: 'Time Studies', icon: <FaGem className="subtab-icon" /> },
+    { id: 'challenges', title: 'Challenges', icon: <FaTrophy className="subtab-icon" /> },
+  ];
+
   return (
-    <div className="section-pane active" id="eternity">
-      <div className="section-content">
-        <h3>Eternity</h3>
-        
-        {/* Subtabs */}
-        <div className="section-subtabs">
-          <button 
-            className={`subtab-button ${activeSubtab === 'general' ? 'active' : ''}`}
-            onClick={() => handleSubtabClick('general')}
-          >
-            <FaHourglassHalf className="subtab-icon" /> General
-          </button>
-          <button 
-            className={`subtab-button ${activeSubtab === 'studies' ? 'active' : ''}`}
-            onClick={() => handleSubtabClick('studies')}
-          >
-            <FaGem className="subtab-icon" /> Time Studies
-          </button>
-          <button 
-            className={`subtab-button ${activeSubtab === 'challenges' ? 'active' : ''}`}
-            onClick={() => handleSubtabClick('challenges')}
-          >
-            <FaTrophy className="subtab-icon" /> Challenges
-          </button>
-        </div>
+    <SectionShell
+      id="eternity"
+      title="Eternity"
+      tabs={tabs}
+      activeTab={activeSubtab}
+      onTabChange={handleSubtabClick}
+    >
         
         {/* General Subtab */}
         <div className={`subtab-content ${activeSubtab === 'general' ? 'active' : ''}`}>
@@ -49,8 +39,8 @@ const EternitySection: React.FC<SectionProps> = ({
             <h4>Eternity Resources</h4>
             <div className="eternity-grid">
               <div className="form-group">
-                <label htmlFor="eternityPoints">Eternity Points</label>
                 <BigNumberInput
+                  label="Eternity Points"
                   value={saveData.eternityPoints || '0'}
                   onChange={(value) => handleValueChange('eternityPoints', value)}
                   saveType={saveType}
@@ -59,8 +49,8 @@ const EternitySection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="eternities">Eternities</label>
                 <BigNumberInput
+                  label="Eternities"
                   value={saveData.eternities || '0'}
                   onChange={(value) => handleValueChange('eternities', value)}
                   saveType={saveType}
@@ -69,8 +59,8 @@ const EternitySection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="timeShards">Time Shards</label>
                 <BigNumberInput
+                  label="Time Shards"
                   value={saveData.timeShards || '0'}
                   onChange={(value) => handleValueChange('timeShards', value)}
                   saveType={saveType}
@@ -79,8 +69,8 @@ const EternitySection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="tickspeed">Tickspeed</label>
                 <BigNumberInput
+                  label="Tickspeed"
                   value={saveData.tickspeed || '1e+3000'}
                   onChange={(value) => handleValueChange('tickspeed', value)}
                   saveType={saveType}
@@ -217,22 +207,15 @@ const EternitySection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="ec-completed">Eternity Challenges Completion</label>
-                <textarea
+                <JsonTextareaField
                   id="ec-completed"
+                  label="Eternity Challenges Completion"
                   placeholder="Format: [1, 0, 0, ...] (12 values)"
-                  value={JSON.stringify(saveData.challenge?.eternity?.completions || [])}
-                  onChange={(e) => {
-                    try {
-                      const completions = JSON.parse(e.target.value);
-                      if (Array.isArray(completions)) {
-                        handleValueChange('challenge.eternity.completions', completions);
-                      }
-                    } catch (err) {
-                      // Do nothing for invalid JSON
-                    }
-                  }}
+                  value={saveData.challenge?.eternity?.completions || []}
+                  onChange={(value) => handleValueChange('challenge.eternity.completions', value)}
+                  expectation="array"
                   rows={3}
+                  fallbackValue={[]}
                 />
                 {renderValidationIndicator('challenge.eternity.completions')}
               </div>
@@ -240,8 +223,7 @@ const EternitySection: React.FC<SectionProps> = ({
           </div>
         </div>
         
-      </div>
-    </div>
+    </SectionShell>
   );
 };
 

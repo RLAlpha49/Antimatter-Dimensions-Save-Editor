@@ -1,0 +1,7 @@
+- Run dev server: `pnpm dev`
+- Build: `pnpm build`
+- Lint: `pnpm lint`
+- Test: `pnpm test`
+- Preview build: `pnpm preview`
+- Clean dist: `pnpm run clean`
+- Windows shell basics: `Get-ChildItem`, `Get-Content`, `Select-String`, `Get-Location`, `git status`

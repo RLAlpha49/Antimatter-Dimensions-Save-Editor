@@ -7,6 +7,16 @@ const JsonEditor = lazy(() => import('./JsonEditor'));
 
 type WorkspaceView = 'structured' | 'json' | 'settings';
 
+const workspaceViews: Array<{
+  id: WorkspaceView;
+  label: string;
+  iconClassName: string;
+}> = [
+  { id: 'structured', label: 'Structured', iconClassName: 'fa fa-th-large' },
+  { id: 'json', label: 'JSON', iconClassName: 'fa fa-code' },
+  { id: 'settings', label: 'Preferences', iconClassName: 'fa fa-cog' },
+];
+
 const formatChangeTime = (timestamp: number | null): string => {
   if (!timestamp) {
     return 'No changes yet';
@@ -18,9 +28,11 @@ const formatChangeTime = (timestamp: number | null): string => {
 const Main: React.FC = () => {
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('structured');
   const [hasMountedJsonEditor, setHasMountedJsonEditor] = useState(false);
-  const structuredPanelRef = useRef<HTMLDivElement | null>(null);
-  const jsonPanelRef = useRef<HTMLDivElement | null>(null);
-  const settingsPanelRef = useRef<HTMLDivElement | null>(null);
+  const [statusAnnouncement, setStatusAnnouncement] = useState('Awaiting encrypted save import.');
+  const [alertAnnouncement, setAlertAnnouncement] = useState('');
+  const structuredPanelRef = useRef<HTMLElement | null>(null);
+  const jsonPanelRef = useRef<HTMLElement | null>(null);
+  const settingsPanelRef = useRef<HTMLElement | null>(null);
   const hasFocusedWorkspacePanel = useRef(false);
   const structuredTabId = 'workspace-tab-structured';
   const jsonTabId = 'workspace-tab-json';
@@ -34,6 +46,8 @@ const Main: React.FC = () => {
     if (nextView === 'json') {
       setHasMountedJsonEditor(true);
     }
+
+    setStatusAnnouncement(`Opened the ${workspaceViews.find((view) => view.id === nextView)?.label ?? nextView} workspace.`);
   };
 
   useEffect(() => {
@@ -76,36 +90,88 @@ const Main: React.FC = () => {
       : isDirty
         ? 'Changes are pending encryption.'
         : 'No encoded export has been generated yet.';
+
+    useEffect(() => {
+      if (errorMessage) {
+        setAlertAnnouncement(`Save error: ${errorMessage}`);
+        return;
+      }
+
+      if (testResults && !testResults.success) {
+        setAlertAnnouncement(`Structure test found ${testResults.errors.length} issue${testResults.errors.length === 1 ? '' : 's'}.`);
+      } else {
+        setAlertAnnouncement('');
+      }
+
+      if (!isLoaded) {
+        setStatusAnnouncement('Awaiting encrypted save import.');
+        return;
+      }
+
+      if (testResults?.success) {
+        setStatusAnnouncement('Structure test passed for the current document.');
+        return;
+      }
+
+      if (encodedOutputData) {
+        setStatusAnnouncement('Encrypted export is ready to copy.');
+        return;
+      }
+
+      if (isDirty) {
+        setStatusAnnouncement('Edits are stored in memory and ready for export review.');
+        return;
+      }
+
+      setStatusAnnouncement('Save loaded and ready for editing.');
+    }, [encodedOutputData, errorMessage, isDirty, isLoaded, testResults]);
   
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
       setRawSaveData(text);
+        setStatusAnnouncement('Encrypted save pasted into the import field.');
+        setAlertAnnouncement('');
     } catch (error) {
       console.error('Failed to read clipboard contents:', error);
+        setAlertAnnouncement('Unable to read the clipboard. Paste the save manually instead.');
     }
   };
   
   const handleDecrypt = () => {
     decryptSave();
+      setStatusAnnouncement('Decrypting the imported save.');
   };
+
+    const handleRunStructureTest = () => {
+      testSave();
+      setStatusAnnouncement('Running the structure test.');
+    };
   
   const handleEncrypt = () => {
     encryptSave();
+      setStatusAnnouncement('Generating the encrypted export string.');
   };
   
   const handleCopy = async () => {
     try {
       if (encodedOutputData) {
         await navigator.clipboard.writeText(encodedOutputData);
+          setStatusAnnouncement('Encrypted save copied to the clipboard.');
       }
     } catch (error) {
       console.error('Failed to copy to clipboard:', error);
+        setAlertAnnouncement('Unable to copy the encrypted save to the clipboard.');
     }
   };
   
   return (
     <main className="editor-container workflow-shell" id="save-editor">
+        <div className="sr-only workflow-announcements" aria-live="off">
+          <div role="status" aria-live="polite" aria-atomic="true">{statusAnnouncement}</div>
+          <div role="alert" aria-atomic="true">{alertAnnouncement}</div>
+        </div>
+
       <div className="main-content">
         <section className="card workflow-hero">
           <div className="card-body">
@@ -155,7 +221,6 @@ const Main: React.FC = () => {
                 id="save-import-input"
                 className="save-textarea"
                 placeholder="Paste your encrypted save data here..."
-                aria-label="Save data input"
                 spellCheck="false"
                 value={rawSaveData}
                 onChange={(e) => setRawSaveData(e.target.value)}
@@ -178,7 +243,7 @@ const Main: React.FC = () => {
               <p className="step-label">Step 2</p>
               <h2>Validation summary</h2>
             </div>
-            <button className="btn secondary" onClick={() => testSave()} disabled={!isLoaded}>
+            <button className="btn secondary" onClick={handleRunStructureTest} disabled={!isLoaded}>
               <i className="fa fa-check-circle"></i> Run structure test
             </button>
           </div>
@@ -246,49 +311,24 @@ const Main: React.FC = () => {
             <div>
               <p className="step-label">Step 3</p>
               <h2>Edit workspace</h2>
+              <p className="section-summary">Use the structured editor for safe field-level changes, switch to JSON for expert edits, or open preferences to adjust the shell.</p>
             </div>
-            <div className="workspace-view-switcher" role="tablist" aria-label="Workspace views">
-              <button 
-                id={structuredTabId}
-                type="button"
-                role="tab"
-                className={`tab-button ${workspaceView === 'structured' ? 'active' : ''}`}
-                onClick={() => handleWorkspaceViewChange('structured')}
-                aria-selected={workspaceView === 'structured'}
-                aria-controls={structuredPanelId}
-                tabIndex={workspaceView === 'structured' ? 0 : -1}
-              >
-                <i className="fa fa-th-large" aria-hidden="true"></i>
-                <span>Structured</span>
-              </button>
-              <button 
-                id={jsonTabId}
-                type="button"
-                role="tab"
-                className={`tab-button ${workspaceView === 'json' ? 'active' : ''}`}
-                onClick={() => handleWorkspaceViewChange('json')}
-                disabled={!isLoaded}
-                aria-selected={workspaceView === 'json'}
-                aria-controls={jsonPanelId}
-                tabIndex={workspaceView === 'json' ? 0 : -1}
-              >
-                <i className="fa fa-code" aria-hidden="true"></i>
-                <span>JSON</span>
-              </button>
-              <button 
-                id={settingsTabId}
-                type="button"
-                role="tab"
-                className={`tab-button ${workspaceView === 'settings' ? 'active' : ''}`}
-                onClick={() => handleWorkspaceViewChange('settings')}
-                aria-selected={workspaceView === 'settings'}
-                aria-controls={settingsPanelId}
-                tabIndex={workspaceView === 'settings' ? 0 : -1}
-              >
-                <i className="fa fa-cog" aria-hidden="true"></i>
-                <span>Preferences</span>
-              </button>
-            </div>
+            <nav className="workspace-view-switcher" aria-label="Workspace views">
+              {workspaceViews.map((view) => (
+                <button
+                  key={view.id}
+                  id={view.id === 'structured' ? structuredTabId : view.id === 'json' ? jsonTabId : settingsTabId}
+                  type="button"
+                  className={`tab-button ${workspaceView === view.id ? 'active' : ''}`}
+                  onClick={() => handleWorkspaceViewChange(view.id)}
+                  disabled={view.id === 'json' && !isLoaded}
+                  aria-pressed={workspaceView === view.id}
+                >
+                  <i className={view.iconClassName} aria-hidden="true"></i>
+                  <span>{view.label}</span>
+                </button>
+              ))}
+            </nav>
           </div>
           <div className="card-body">
             <div className="workspace-meta-bar">
@@ -299,23 +339,23 @@ const Main: React.FC = () => {
             </div>
 
             <div className="workspace-panel">
-              <div
+              <section
                 id={structuredPanelId}
                 ref={structuredPanelRef}
-                role="tabpanel"
+                role="region"
                 aria-labelledby={structuredTabId}
                 hidden={workspaceView !== 'structured'}
                 tabIndex={-1}
               >
                 {workspaceView === 'structured' && <StructuredEditor isActive={workspaceView === 'structured'} />}
-              </div>
+              </section>
 
               {(workspaceView === 'json' || hasMountedJsonEditor) && (
-                <div
+                <section
                   id={jsonPanelId}
                   ref={jsonPanelRef}
                   className="json-workspace-shell"
-                  role="tabpanel"
+                  role="region"
                   aria-labelledby={jsonTabId}
                   hidden={workspaceView !== 'json'}
                   tabIndex={-1}
@@ -337,13 +377,13 @@ const Main: React.FC = () => {
                       <JsonEditor isActive={workspaceView === 'json'} />
                     </Suspense>
                   )}
-                </div>
+                </section>
               )}
 
-              <div
+              <section
                 id={settingsPanelId}
                 ref={settingsPanelRef}
-                role="tabpanel"
+                role="region"
                 aria-labelledby={settingsTabId}
                 hidden={workspaceView !== 'settings'}
                 tabIndex={-1}
@@ -366,7 +406,7 @@ const Main: React.FC = () => {
                   </div>
                 </div>
                 )}
-              </div>
+              </section>
             </div>
           </div>
         </section>
@@ -405,7 +445,6 @@ const Main: React.FC = () => {
                 id="save-export-output"
                 className="save-textarea"
                 placeholder="Your encrypted save will appear here..."
-                aria-label="Save data output"
                 spellCheck="false"
                 readOnly
                 value={encodedOutputData}
