@@ -12,6 +12,16 @@ import { SaveDataRecord, SaveEditorState, SaveTestResults } from '../core/save/t
 import { getValueAtPath } from '../core/document/path';
 import { testSaveData, checkRealitySection } from "../utils/testSave";
 
+const structureReferenceAssetBySaveType: Record<SaveType, string> = {
+  [SaveType.PC]: 'pc.json',
+  [SaveType.Android]: 'android.json',
+};
+
+const structureReferenceImportBySaveType: Record<SaveType, () => Promise<{ default: unknown }>> = {
+  [SaveType.PC]: () => import('../../pc.json'),
+  [SaveType.Android]: () => import('../../android.json'),
+};
+
 // Interface for save context
 export interface SaveContextType {
   originalSaveData: SaveDataRecord | null;
@@ -128,6 +138,7 @@ export const SaveProvider: React.FC<SaveProviderProps> = ({ children }) => {
     const runTestSave = async (): Promise<void> => {
       const snapshot = store.getState();
       const modifiedSaveData = snapshot.document?.workingData ?? null;
+      const referenceAsset = structureReferenceAssetBySaveType[snapshot.saveType];
 
       if (!modifiedSaveData) {
         store.setTestResults({
@@ -141,9 +152,9 @@ export const SaveProvider: React.FC<SaveProviderProps> = ({ children }) => {
         let saveJsonContent = '';
 
         try {
-          const response = await fetch('./pc.json');
+          const response = await fetch(`./${referenceAsset}`);
           if (!response.ok) {
-            throw new Error(`Error retrieving pc.json file: ${response.status}`);
+            throw new Error(`Error retrieving ${referenceAsset} file: ${response.status}`);
           }
 
           saveJsonContent = await response.text();
@@ -151,12 +162,12 @@ export const SaveProvider: React.FC<SaveProviderProps> = ({ children }) => {
           console.error('Error with fetch, trying with import:', fetchError);
 
           try {
-            const saveJsonModule = await import('../../pc.json');
+            const saveJsonModule = await structureReferenceImportBySaveType[snapshot.saveType]();
             saveJsonContent = JSON.stringify(saveJsonModule.default);
           } catch (importError) {
             store.setTestResults({
               success: false,
-              errors: [`Unable to load pc.json file: ${importError}`],
+              errors: [`Unable to load ${referenceAsset} file: ${importError}`],
             });
             return;
           }

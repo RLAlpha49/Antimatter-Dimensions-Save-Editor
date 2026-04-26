@@ -4,6 +4,13 @@ import { AntimatterDimensionsStruct } from '../Struct';
 // Define progression stages
 type ProgressionStage = 'early' | 'infinity' | 'eternity' | 'reality';
 
+const isDecimalObject = (value: unknown): value is { mantissa: number; exponent: number } => {
+  return typeof value === 'object'
+    && value !== null
+    && 'mantissa' in value
+    && 'exponent' in value;
+};
+
 /**
  * Determines the progression stage of a save based on its properties
  * @param saveData The decrypted save data
@@ -554,6 +561,7 @@ export const checkRealitySection = (
   const issues: string[] = [];
   const warnings: string[] = [];
   const progressionStage = determineProgressionStage(decryptedSave);
+  const partSimulatedReality = (decryptedSave as any).partSimulatedReality ?? (decryptedSave.reality as any)?.partSimulated;
   
   // Only validate reality properties if the save has reached Reality stage
   if (progressionStage !== 'reality') {
@@ -564,14 +572,14 @@ export const checkRealitySection = (
   // Check reality-specific properties
   if (decryptedSave.realities === undefined) {
     issues.push('The "realities" property is missing');
-  } else if (typeof decryptedSave.realities !== 'number') {
+  } else if (typeof decryptedSave.realities !== 'number' && !isDecimalObject(decryptedSave.realities)) {
     issues.push(`The "realities" property is of type ${typeof decryptedSave.realities} instead of number`);
   }
   
-  if (decryptedSave.partSimulatedReality === undefined) {
+  if (partSimulatedReality === undefined) {
     issues.push('The "partSimulatedReality" property is missing');
-  } else if (typeof decryptedSave.partSimulatedReality !== 'number') {
-    issues.push(`The "partSimulatedReality" property is of type ${typeof decryptedSave.partSimulatedReality} instead of number`);
+  } else if (typeof partSimulatedReality !== 'number') {
+    issues.push(`The "partSimulatedReality" property is of type ${typeof partSimulatedReality} instead of number`);
   }
   
   if (!decryptedSave.reality) {
@@ -582,7 +590,7 @@ export const checkRealitySection = (
     
     if (reality.realityMachines === undefined) {
       issues.push('The "reality.realityMachines" property is missing');
-    } else if (typeof reality.realityMachines !== 'string') {
+    } else if (typeof reality.realityMachines !== 'string' && !isDecimalObject(reality.realityMachines)) {
       issues.push(`The "reality.realityMachines" property is of type ${typeof reality.realityMachines} instead of string`);
     }
     
