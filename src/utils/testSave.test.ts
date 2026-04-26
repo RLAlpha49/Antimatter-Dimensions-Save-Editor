@@ -41,7 +41,8 @@ describe('testSaveData', () => {
 
     expect(result.issues).not.toContain('The "realities" property is missing');
     expect(result.issues).not.toContainEqual(expect.stringContaining('The "realities" property is of type object instead of number'));
-    expect(result.issues).not.toContain('The "partSimulatedReality" property is missing');
+    expect(result.issues).not.toContain('The "reality.partSimulated" property is missing');
+    expect(result.issues).not.toContainEqual(expect.stringContaining('The "reality.partSimulated" property is of type'));
     expect(result.issues).not.toContainEqual(expect.stringContaining('The "reality.realityMachines" property is of type object instead of string'));
   });
 });

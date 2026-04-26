@@ -1,4 +1,4 @@
-import { SaveService } from '../services/SaveService';
+import { SaveService, SaveType } from '../services/SaveService';
 import { AntimatterDimensionsStruct } from '../Struct';
 
 // Define progression stages
@@ -11,17 +11,55 @@ const isDecimalObject = (value: unknown): value is { mantissa: number; exponent:
     && 'exponent' in value;
 };
 
+const hasProgressValue = (value: unknown): boolean => {
+  if (value === undefined || value === null) {
+    return false;
+  }
+
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    return value !== '0' && value !== '';
+  }
+
+  if (typeof value === 'number') {
+    return value > 0;
+  }
+
+  if (isDecimalObject(value)) {
+    return value.mantissa !== 0;
+  }
+
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+
+  if (typeof value === 'object') {
+    return Object.keys(value).length > 0;
+  }
+
+  return false;
+};
+
+const detectSchemaFromSaveData = (saveData: AntimatterDimensionsStruct): SaveType => {
+  return 'brake' in (saveData as unknown as object) ? SaveType.Android : SaveType.PC;
+};
+
 /**
  * Determines the progression stage of a save based on its properties
  * @param saveData The decrypted save data
  * @returns The detected progression stage
  */
-const determineProgressionStage = (saveData: AntimatterDimensionsStruct): ProgressionStage => {
+const determineProgressionStage = (saveData: AntimatterDimensionsStruct, saveType: SaveType): ProgressionStage => {
+  const breakInfinityEnabled = saveType === SaveType.Android ? (saveData as any).brake === true : saveData.break === true;
+
   // Reality stage: has reality property and realities > 0, or has celestials/glyphs
   if (
     (saveData.reality && (
-      (saveData.realities && saveData.realities > 0) ||
-      (saveData.reality.realityMachines && saveData.reality.realityMachines !== '0') ||
+      hasProgressValue(saveData.realities) ||
+      hasProgressValue(saveData.reality.realityMachines) ||
       Object.keys(saveData.reality).length > 5
     )) ||
     saveData.celestials ||
@@ -33,28 +71,29 @@ const determineProgressionStage = (saveData: AntimatterDimensionsStruct): Progre
   
   // Eternity stage: has eternity points, eternities, or eternity-related properties
   if (
-    (saveData.eternityPoints && saveData.eternityPoints !== '0') ||
-    (saveData.eternities && saveData.eternities !== '0') ||
+    hasProgressValue((saveData as any).eternityPoints) ||
+    hasProgressValue((saveData as any).eternities) ||
     (saveData.eternity && Object.keys(saveData.eternity).length > 0) ||
     (saveData as any).timestudy ||  // Using any since timestudy may not be in unified type
     saveData.dilation ||
-    ((saveData as any).timeShards && (saveData as any).timeShards !== '0') ||
-    ((saveData as any).totalTickGained && (saveData as any).totalTickGained > 0)
+    hasProgressValue((saveData as any).timeShards) ||
+    hasProgressValue((saveData as any).totalTickGained)
   ) {
     return 'eternity';
   }
   
   // Infinity stage: has infinity points, infinities, break property, or replicanti
   if (
-    saveData.break === true || 
-    (saveData.infinityPoints && saveData.infinityPoints !== '0') ||
-    (saveData.infinities && saveData.infinities !== '0') ||
-    (saveData.infinitiesBanked && saveData.infinitiesBanked !== '0') ||
-    (saveData.infinityPower && saveData.infinityPower !== '0') ||
+    breakInfinityEnabled || 
+    hasProgressValue((saveData as any).infinityPoints) ||
+    hasProgressValue((saveData as any).infinities) ||
+    hasProgressValue((saveData as any).infinitiesBanked) ||
+    hasProgressValue((saveData as any).infinityPower) ||
     saveData.infinityUpgrades?.length > 0 ||
     saveData.replicanti ||
-    (saveData.IPMultPurchases && saveData.IPMultPurchases > 0) ||
-    ((saveData as any).partInfinityPoint && (saveData as any).partInfinityPoint > 0)
+    hasProgressValue((saveData as any).IPMultPurchases) ||
+    hasProgressValue((saveData as any).ipMultUpgrades) ||
+    hasProgressValue((saveData as any).partInfinityPoint)
   ) {
     return 'infinity';
   }
@@ -68,8 +107,8 @@ const determineProgressionStage = (saveData: AntimatterDimensionsStruct): Progre
  * @param stage The progression stage
  * @returns Array of required property paths
  */
-const getRequiredPropertiesByStage = (stage: ProgressionStage): string[] => {
-  const baseProperties = [
+const getRequiredPropertiesByStage = (stage: ProgressionStage, saveType: SaveType): string[] => {
+  const pcBaseProperties = [
     'antimatter',
     'dimensions',
     'dimensions.antimatter',
@@ -92,8 +131,8 @@ const getRequiredPropertiesByStage = (stage: ProgressionStage): string[] => {
     'IPMultPurchases'
   ];
 
-  const infinityProperties = [
-    ...baseProperties,
+  const pcInfinityProperties = [
+    ...pcBaseProperties,
     'infinityPoints',
     'infinities',
     'infinitiesBanked',
@@ -114,8 +153,8 @@ const getRequiredPropertiesByStage = (stage: ProgressionStage): string[] => {
     // Note: advanced replicanti properties like 'timer' are conditional
   ];
 
-  const eternityProperties = [
-    ...infinityProperties,
+  const pcEternityProperties = [
+    ...pcInfinityProperties,
     'eternityPoints',
     'eternities',
     'eternityUpgrades',
@@ -138,8 +177,8 @@ const getRequiredPropertiesByStage = (stage: ProgressionStage): string[] => {
     // Note: detailed timestudy properties are conditional
   ];
 
-  const realityProperties = [
-    ...eternityProperties,
+  const pcRealityProperties = [
+    ...pcEternityProperties,
     'reality',
     'reality.realityMachines',
     'reality.imaginaryMachines',
@@ -158,6 +197,79 @@ const getRequiredPropertiesByStage = (stage: ProgressionStage): string[] => {
     'tabNotifications',
     'triggeredTabNotificationBits'
   ];
+
+  const androidBaseProperties = [
+    'antimatter',
+    'dimensions',
+    'dimensions.antimatter',
+    'buyUntil10',
+    'matter',
+    'achievementBits',
+    'secretAchievementBits',
+    'challenge',
+    'challenge.normal',
+    'auto',
+    'dimensionBoosts',
+    'galaxies',
+    'news',
+    'lastUpdate',
+    'records',
+    'records.totalAntimatter',
+    'version',
+    'brake'
+  ];
+
+  const androidInfinityProperties = [
+    ...androidBaseProperties,
+    'infinityPoints',
+    'infinities',
+    'infinityPower',
+    'infinity',
+    'infinity.break',
+    'infinity.upgrades',
+    'infinityUpgradeBits',
+    'ipMultUpgrades',
+    'partInfinityPoint',
+    'partInfinitied',
+    'replicanti',
+    'replicanti.amount',
+    'replicanti.unl'
+  ];
+
+  const androidEternityProperties = [
+    ...androidInfinityProperties,
+    'eternityPoints',
+    'eternities',
+    'timeShards',
+    'epMultUpgrades',
+    'eternityUpgradeBits',
+    'dilation'
+  ];
+
+  const androidRealityProperties = [
+    ...androidEternityProperties,
+    'realities',
+    'reality',
+    'reality.realityMachines',
+    'reality.imaginaryMachines',
+    'reality.upgradeBits',
+    'reality.upgradeRequirementBits',
+    'reality.partEternitied',
+    'reality.partSimulated',
+    'celestials',
+    'isGameEnd',
+    'tutorialState',
+    'tutorialActive',
+    'options',
+    'IAP',
+    'tabNotifications',
+    'triggeredTabNotificationBits'
+  ];
+
+  const baseProperties = saveType === SaveType.Android ? androidBaseProperties : pcBaseProperties;
+  const infinityProperties = saveType === SaveType.Android ? androidInfinityProperties : pcInfinityProperties;
+  const eternityProperties = saveType === SaveType.Android ? androidEternityProperties : pcEternityProperties;
+  const realityProperties = saveType === SaveType.Android ? androidRealityProperties : pcRealityProperties;
 
   switch (stage) {
     case 'early':
@@ -179,8 +291,8 @@ const getRequiredPropertiesByStage = (stage: ProgressionStage): string[] => {
  * @param stage The current progression stage
  * @returns Whether the property should be validated
  */
-const isPropertyRelevantForStage = (propertyPath: string, stage: ProgressionStage): boolean => {
-  const requiredProperties = getRequiredPropertiesByStage(stage);
+const isPropertyRelevantForStage = (propertyPath: string, stage: ProgressionStage, saveType: SaveType): boolean => {
+  const requiredProperties = getRequiredPropertiesByStage(stage, saveType);
   
   // Check if the property or its parent path is required
   return requiredProperties.some(required => 
@@ -195,8 +307,8 @@ const isPropertyRelevantForStage = (propertyPath: string, stage: ProgressionStag
  * @param stage The progression stage to create template for
  * @returns Filtered reference appropriate for the stage
  */
-const createStageAppropriateReference = (fullReference: any, stage: ProgressionStage): any => {
-  const requiredProperties = getRequiredPropertiesByStage(stage);
+const createStageAppropriateReference = (fullReference: any, stage: ProgressionStage, saveType: SaveType): any => {
+  const requiredProperties = getRequiredPropertiesByStage(stage, saveType);
   const stageReference: any = {};
   
   // Helper function to recursively filter properties
@@ -209,7 +321,7 @@ const createStageAppropriateReference = (fullReference: any, stage: ProgressionS
       const propertyPath = currentPath ? `${currentPath}.${key}` : key;
       
       // Check if this property should exist at the current stage
-      if (isPropertyRelevantForStage(propertyPath, stage)) {
+      if (isPropertyRelevantForStage(propertyPath, stage, saveType)) {
         if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
           target[key] = {};
           filterProperties(source[key], target[key], propertyPath);
@@ -232,9 +344,11 @@ const createStageAppropriateReference = (fullReference: any, stage: ProgressionS
  * @param stage The current progression stage
  * @returns Whether the property is expected to exist
  */
-const shouldPropertyExist = (propertyPath: string, saveData: AntimatterDimensionsStruct, stage: ProgressionStage): boolean => {
+const shouldPropertyExist = (propertyPath: string, saveData: AntimatterDimensionsStruct, stage: ProgressionStage, saveType: SaveType): boolean => {
   // Always validate core properties (but not all sub-properties)
-  const coreProperties = ['antimatter', 'dimensions.antimatter', 'version', 'lastUpdate'];
+  const coreProperties = saveType === SaveType.Android
+    ? ['antimatter', 'dimensions.antimatter', 'version', 'lastUpdate', 'brake']
+    : ['antimatter', 'dimensions.antimatter', 'version', 'lastUpdate'];
   if (coreProperties.some(core => propertyPath === core)) {
     return true;
   }
@@ -249,17 +363,17 @@ const shouldPropertyExist = (propertyPath: string, saveData: AntimatterDimension
     
     // Advanced records only exist after hitting those milestones
     if (propertyPath.includes('lastTenInfinities') || propertyPath.includes('InfinityTime')) {
-      return (saveData.infinities && typeof saveData.infinities === 'string' && parseInt(saveData.infinities) >= 10) ||
-             (saveData.break === true && saveData.infinityPoints && saveData.infinityPoints !== '0');
+            return hasProgressValue((saveData as any).infinities) ||
+              (saveType === SaveType.Android ? (saveData as any).brake === true : saveData.break === true);
     }
     
     if (propertyPath.includes('lastTenEternities') || propertyPath.includes('EternityTime')) {
-      return ((saveData as any).eternities && typeof (saveData as any).eternities === 'string' && parseInt((saveData as any).eternities) >= 10) ||
-             ((saveData as any).eternityPoints && (saveData as any).eternityPoints !== '0');
+            return hasProgressValue((saveData as any).eternities) ||
+              hasProgressValue((saveData as any).eternityPoints);
     }
     
     if (propertyPath.includes('lastTenRealities') || propertyPath.includes('RealityTime')) {
-      return (saveData.realities && saveData.realities >= 10);
+            return hasProgressValue((saveData as any).realities);
     }
     
     // Other advanced records
@@ -273,11 +387,11 @@ const shouldPropertyExist = (propertyPath: string, saveData: AntimatterDimension
   // Speedrun properties only exist if speedrun is unlocked
   if (propertyPath.startsWith('speedrun.')) {
     if (propertyPath === 'speedrun.isUnlocked' || propertyPath === 'speedrun.isActive') {
-      return stage === 'reality'; // Basic speedrun properties exist in reality
+      return saveType === SaveType.PC && stage === 'reality';
     }
     // Advanced speedrun properties only if actually speedrunning
     const speedrun = (saveData as any).speedrun;
-    return speedrun && speedrun.isUnlocked === true;
+    return saveType === SaveType.PC && speedrun && speedrun.isUnlocked === true;
   }
   
   // Replicanti sub-properties only exist if replicanti is unlocked
@@ -292,7 +406,7 @@ const shouldPropertyExist = (propertyPath: string, saveData: AntimatterDimension
   // Time study properties only exist if eternity is reached
   if (propertyPath.startsWith('timestudy.')) {
     const eternityPoints = (saveData as any).eternityPoints;
-    return eternityPoints && eternityPoints !== '0';
+    return hasProgressValue(eternityPoints);
   }
   
   // Dilation properties only exist if dilation is unlocked
@@ -302,12 +416,12 @@ const shouldPropertyExist = (propertyPath: string, saveData: AntimatterDimension
   
   // Celestials properties only exist if reality is reached and celestials unlocked
   if (propertyPath.startsWith('celestials.')) {
-    return saveData.realities && saveData.realities > 0;
+    return hasProgressValue((saveData as any).realities);
   }
   
   // Black hole properties only exist if black holes are unlocked
   if (propertyPath.startsWith('blackHole') || propertyPath.includes('blackHole')) {
-    return saveData.realities && saveData.realities > 0 && 
+    return hasProgressValue((saveData as any).realities) && 
            (saveData as any).blackHole && Array.isArray((saveData as any).blackHole);
   }
   
@@ -316,42 +430,40 @@ const shouldPropertyExist = (propertyPath: string, saveData: AntimatterDimension
     case 'early':
       // Early game - only basic properties should exist
       const earlyGameProperties = [
-        'antimatter', 'dimensions', 'version', 'lastUpdate', 'buyUntil10', 'sacrificed',
-        'achievementBits', 'secretAchievementBits', 'challenge.normal', 'auto',
-        'dimensionBoosts', 'galaxies', 'news', 'secretUnlocks', 'IPMultPurchases'
+        ...getRequiredPropertiesByStage('early', saveType)
       ];
       return earlyGameProperties.some(prop => propertyPath.startsWith(prop));
       
     case 'infinity':
       // Infinity stage - check if infinity was actually reached
       if (propertyPath.includes('infinity') && !propertyPath.includes('eternity') && !propertyPath.includes('reality')) {
-        return saveData.break === true || 
-               (saveData.infinityPoints && saveData.infinityPoints !== '0') ||
-               (saveData.infinities && saveData.infinities !== '0');
+        return (saveType === SaveType.Android ? (saveData as any).brake === true : saveData.break === true) || 
+               hasProgressValue((saveData as any).infinityPoints) ||
+               hasProgressValue((saveData as any).infinities);
       }
       if (propertyPath.startsWith('replicanti')) {
-        return saveData.break === true;
+        return saveType === SaveType.Android ? (saveData as any).brake === true : saveData.break === true;
       }
-      return isPropertyRelevantForStage(propertyPath, stage) && !propertyPath.includes('eternity') && !propertyPath.includes('reality');
+      return isPropertyRelevantForStage(propertyPath, stage, saveType) && !propertyPath.includes('eternity') && !propertyPath.includes('reality');
       
     case 'eternity':
       // Eternity stage - check if eternity was actually reached
       if (propertyPath.includes('eternity') || propertyPath.includes('timestudy') || propertyPath.includes('dilation')) {
         const eternityPoints = (saveData as any).eternityPoints;
-        return eternityPoints && eternityPoints !== '0';
+        return hasProgressValue(eternityPoints);
       }
-      return isPropertyRelevantForStage(propertyPath, stage) && !propertyPath.includes('reality');
+      return isPropertyRelevantForStage(propertyPath, stage, saveType) && !propertyPath.includes('reality');
       
     case 'reality':
       // Reality stage - most properties can exist, but still check for specific unlocks
       if (propertyPath.includes('reality') || propertyPath.includes('celestials') || propertyPath.includes('glyphs')) {
-        return (saveData.realities && saveData.realities > 0) ||
+        return hasProgressValue((saveData as any).realities) ||
                (saveData.reality && Object.keys(saveData.reality).length > 0);
       }
-      return isPropertyRelevantForStage(propertyPath, stage);
+      return isPropertyRelevantForStage(propertyPath, stage, saveType);
       
     default:
-      return isPropertyRelevantForStage(propertyPath, stage);
+      return isPropertyRelevantForStage(propertyPath, stage, saveType);
   }
 };
 
@@ -404,10 +516,11 @@ export const testSaveData = (
     result.decryptedData = decryptedData.data as AntimatterDimensionsStruct;
     
     // Determine the progression stage of the save
-    result.progressionStage = determineProgressionStage(result.decryptedData);
+    const saveType = decryptedData.saveType;
+    result.progressionStage = determineProgressionStage(result.decryptedData, saveType);
     
     // Create a stage-appropriate reference template
-    const stageReference = createStageAppropriateReference(fullReference, result.progressionStage);
+    const stageReference = createStageAppropriateReference(fullReference, result.progressionStage, saveType);
     
     // Add informational message about the detected stage
     result.warnings.push(`Detected progression stage: ${result.progressionStage}`);
@@ -425,7 +538,7 @@ export const testSaveData = (
       if (Array.isArray(reference)) {
         if (!Array.isArray(decrypted)) {
           const propertyPath = path || 'root';
-          if (shouldPropertyExist(propertyPath, result.decryptedData!, result.progressionStage)) {
+          if (shouldPropertyExist(propertyPath, result.decryptedData!, result.progressionStage, saveType)) {
             result.errors.push(`Property ${propertyPath} should be an array`);
           }
         }
@@ -436,7 +549,7 @@ export const testSaveData = (
       if (typeof reference !== 'object' || reference === null) {
         if (typeof decrypted !== typeof reference) {
           const propertyPath = path || 'root';
-          if (shouldPropertyExist(propertyPath, result.decryptedData!, result.progressionStage)) {
+          if (shouldPropertyExist(propertyPath, result.decryptedData!, result.progressionStage, saveType)) {
             result.errors.push(`Property ${propertyPath} has incorrect type: expected ${typeof reference}, got ${typeof decrypted}`);
           }
         }
@@ -453,7 +566,7 @@ export const testSaveData = (
           const propertyPath = path ? `${path}.${key}` : key;
           
           // Check if this property should exist at the current stage
-          if (shouldPropertyExist(propertyPath, result.decryptedData!, result.progressionStage)) {
+          if (shouldPropertyExist(propertyPath, result.decryptedData!, result.progressionStage, saveType)) {
             // Further check if it's truly required or just expected
             const isCriticalProperty = [
               'antimatter', 'dimensions', 'version', 'lastUpdate'
@@ -487,7 +600,7 @@ export const testSaveData = (
       if (extraKeys.length > 0) {
         extraKeys.forEach(key => {
           const propertyPath = path ? `${path}.${key}` : key;
-          if (!shouldPropertyExist(propertyPath, result.decryptedData!, result.progressionStage)) {
+          if (!shouldPropertyExist(propertyPath, result.decryptedData!, result.progressionStage, saveType)) {
             result.warnings.push(`Unexpected property for ${result.progressionStage} stage: ${propertyPath}`);
           }
         });
@@ -501,7 +614,7 @@ export const testSaveData = (
           const currentPath = path ? `${path}.${key}` : key;
           
           // Only validate properties relevant to current stage
-          if (shouldPropertyExist(currentPath, result.decryptedData!, result.progressionStage)) {
+          if (shouldPropertyExist(currentPath, result.decryptedData!, result.progressionStage, saveType)) {
             // Recursive check for objects
             if (
               typeof decryptedValue === 'object' && 
@@ -526,7 +639,7 @@ export const testSaveData = (
     checkProperties(result.decryptedData, stageReference);
     
     // Add summary information
-    const totalProperties = getRequiredPropertiesByStage(result.progressionStage).length;
+    const totalProperties = getRequiredPropertiesByStage(result.progressionStage, saveType).length;
     result.warnings.push(`Validating ${totalProperties} properties for ${result.progressionStage} stage`);
     
     // If no errors were found, the test is successful
@@ -560,8 +673,11 @@ export const checkRealitySection = (
 } => {
   const issues: string[] = [];
   const warnings: string[] = [];
-  const progressionStage = determineProgressionStage(decryptedSave);
-  const partSimulatedReality = (decryptedSave as any).partSimulatedReality ?? (decryptedSave.reality as any)?.partSimulated;
+  const saveType = detectSchemaFromSaveData(decryptedSave);
+  const progressionStage = determineProgressionStage(decryptedSave, saveType);
+  const partSimulatedReality = saveType === SaveType.Android
+    ? (decryptedSave.reality as any)?.partSimulated
+    : (decryptedSave as any).partSimulatedReality;
   
   // Only validate reality properties if the save has reached Reality stage
   if (progressionStage !== 'reality') {
@@ -577,9 +693,9 @@ export const checkRealitySection = (
   }
   
   if (partSimulatedReality === undefined) {
-    issues.push('The "partSimulatedReality" property is missing');
+    issues.push(`The "${saveType === SaveType.Android ? 'reality.partSimulated' : 'partSimulatedReality'}" property is missing`);
   } else if (typeof partSimulatedReality !== 'number') {
-    issues.push(`The "partSimulatedReality" property is of type ${typeof partSimulatedReality} instead of number`);
+    issues.push(`The "${saveType === SaveType.Android ? 'reality.partSimulated' : 'partSimulatedReality'}" property is of type ${typeof partSimulatedReality} instead of number`);
   }
   
   if (!decryptedSave.reality) {

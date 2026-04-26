@@ -22,8 +22,10 @@ export interface SaveFieldDefinition {
   description: string;
   group: string;
   kind: SaveFieldKind;
+  platformKinds?: Partial<Record<SaveType, SaveFieldKind>>;
   nativePaths: Record<SaveType, DocumentPath[]>;
   rule?: SaveFieldRule;
+  platformRules?: Partial<Record<SaveType, SaveFieldRule>>;
 }
 
 export interface SaveFieldSectionDefinition {
@@ -96,7 +98,7 @@ export const saveEditorSections: SaveFieldSectionDefinition[] = [
         kind: 'boolean',
         nativePaths: {
           [SaveType.PC]: ['break'],
-          [SaveType.Android]: ['brake', 'infinity.break'],
+          [SaveType.Android]: ['brake'],
         },
       }),
       buildField({
@@ -250,26 +252,38 @@ export const saveEditorSections: SaveFieldSectionDefinition[] = [
       buildField({
         id: 'replicantiChance',
         label: 'Replicanti Chance',
-        description: 'Replication chance.',
+        description: 'Replication chance on PC, upgrade count on Android.',
         group: 'replicanti',
         kind: 'number',
+        platformKinds: {
+          [SaveType.Android]: 'integer',
+        },
         nativePaths: {
           [SaveType.PC]: ['replicanti.chance'],
-          [SaveType.Android]: ['replicanti.chance'],
+          [SaveType.Android]: ['replicanti.chanceUpgrades'],
         },
         rule: { minimum: 0, maximum: 1 },
+        platformRules: {
+          [SaveType.Android]: { minimum: 0, integer: true },
+        },
       }),
       buildField({
         id: 'replicantiInterval',
         label: 'Replicanti Interval',
-        description: 'Replication interval in milliseconds.',
+        description: 'Replication interval on PC, interval upgrade count on Android.',
         group: 'replicanti',
         kind: 'number',
+        platformKinds: {
+          [SaveType.Android]: 'integer',
+        },
         nativePaths: {
           [SaveType.PC]: ['replicanti.interval'],
-          [SaveType.Android]: ['replicanti.interval'],
+          [SaveType.Android]: ['replicanti.intervalUpgrades'],
         },
         rule: { minimum: 0 },
+        platformRules: {
+          [SaveType.Android]: { minimum: 0, integer: true },
+        },
       }),
       buildField({
         id: 'replicantiGalaxies',
@@ -414,6 +428,14 @@ export const getCandidatePaths = (field: SaveFieldDefinition, saveType: SaveType
   return field.nativePaths[saveType];
 };
 
+const getFieldKind = (field: SaveFieldDefinition, saveType: SaveType): SaveFieldKind => {
+  return field.platformKinds?.[saveType] ?? field.kind;
+};
+
+const getFieldRule = (field: SaveFieldDefinition, saveType: SaveType): SaveFieldRule | undefined => {
+  return field.platformRules?.[saveType] ?? field.rule;
+};
+
 export const resolveFieldPath = (
   saveData: SaveDataRecord,
   field: SaveFieldDefinition,
@@ -459,12 +481,15 @@ const validateBigNumber = (value: unknown): boolean => {
 export const validateFieldValue = (
   field: SaveFieldDefinition,
   value: unknown,
-  resolvedPath: DocumentPath
+  resolvedPath: DocumentPath,
+  saveType: SaveType
 ): SaveValidationIssue[] => {
   const issues: SaveValidationIssue[] = [];
+  const rule = getFieldRule(field, saveType);
+  const kind = getFieldKind(field, saveType);
 
   if (value === undefined || value === null || value === '') {
-    if (field.rule?.required) {
+    if (rule?.required) {
       issues.push({
         code: 'required-field',
         message: `${field.label} is required.`,
@@ -476,7 +501,7 @@ export const validateFieldValue = (
     return issues;
   }
 
-  if (field.kind === 'big-number' && !validateBigNumber(value)) {
+  if (kind === 'big-number' && !validateBigNumber(value)) {
     issues.push({
       code: 'invalid-big-number',
       message: `${field.label} must be a valid large numeric value.`,
@@ -486,7 +511,7 @@ export const validateFieldValue = (
     return issues;
   }
 
-  if (field.kind === 'boolean' && typeof value !== 'boolean') {
+  if (kind === 'boolean' && typeof value !== 'boolean') {
     issues.push({
       code: 'invalid-boolean',
       message: `${field.label} must be a boolean.`,
@@ -496,7 +521,7 @@ export const validateFieldValue = (
     return issues;
   }
 
-  if ((field.kind === 'number' || field.kind === 'integer') && typeof value !== 'number') {
+  if ((kind === 'number' || kind === 'integer') && typeof value !== 'number') {
     issues.push({
       code: 'invalid-number',
       message: `${field.label} must be a number.`,
@@ -506,8 +531,8 @@ export const validateFieldValue = (
     return issues;
   }
 
-  if ((field.kind === 'number' || field.kind === 'integer') && typeof value === 'number') {
-    if (field.rule?.integer && !Number.isInteger(value)) {
+  if ((kind === 'number' || kind === 'integer') && typeof value === 'number') {
+    if (rule?.integer && !Number.isInteger(value)) {
       issues.push({
         code: 'integer-required',
         message: `${field.label} must be an integer.`,
@@ -516,19 +541,19 @@ export const validateFieldValue = (
       });
     }
 
-    if (field.rule?.minimum !== undefined && value < field.rule.minimum) {
+    if (rule?.minimum !== undefined && value < rule.minimum) {
       issues.push({
         code: 'minimum-value',
-        message: `${field.label} must be at least ${field.rule.minimum}.`,
+        message: `${field.label} must be at least ${rule.minimum}.`,
         path: resolvedPath,
         severity: 'warning',
       });
     }
 
-    if (field.rule?.maximum !== undefined && value > field.rule.maximum) {
+    if (rule?.maximum !== undefined && value > rule.maximum) {
       issues.push({
         code: 'maximum-value',
-        message: `${field.label} must be at most ${field.rule.maximum}.`,
+        message: `${field.label} must be at most ${rule.maximum}.`,
         path: resolvedPath,
         severity: 'warning',
       });
@@ -547,7 +572,7 @@ export const validateRegisteredFields = (
   for (const field of saveEditorFields) {
     const path = resolveFieldPath(saveData, field, saveType);
     const value = readFieldValue(saveData, field, saveType);
-    issues.push(...validateFieldValue(field, value, path));
+    issues.push(...validateFieldValue(field, value, path, saveType));
   }
 
   return issues;

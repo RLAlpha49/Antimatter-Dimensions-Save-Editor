@@ -30,6 +30,7 @@ const AutoBuyersSection: React.FC<SectionProps> = ({
   // Cast saveData to specific type when needed
   const pcSaveData = isPCFormat() ? saveData as PCStruct : null;
   const androidSaveData = !isPCFormat() ? saveData as AndroidStruct : null;
+  const typedSaveData = saveData as any;
 
   return (
     <div className="section-pane active" id="autobuyers-section">
@@ -83,14 +84,14 @@ const AutoBuyersSection: React.FC<SectionProps> = ({
                   id="auto-autobuyersOn"
                   value={isPCFormat() ? 
                     (pcSaveData?.auto?.autobuyersOn ?? false ? 'true' : 'false') : 
-                    (androidSaveData?.auto?.achievements ?? false ? 'true' : 'false')}
+                    (typedSaveData.auto?.autobuyersOn ?? false ? 'true' : 'false')}
                   onChange={(e) => handleValueChange(isPCFormat() ? 
-                    'auto.autobuyersOn' : 'auto.achievements', e.target.value === 'true')}
+                    'auto.autobuyersOn' : 'auto.autobuyersOn', e.target.value === 'true')}
                 >
                   <option value="true">Yes</option>
                   <option value="false">No</option>
                 </select>
-                {renderValidationIndicator(isPCFormat() ? 'auto.autobuyersOn' : 'auto.achievements')}
+                {renderValidationIndicator('auto.autobuyersOn')}
               </div>
               
               <div className="form-group">
@@ -347,13 +348,24 @@ const AutoBuyersSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="auto-eternity-amount">Eternity Amount</label>
-                <input
-                  type="text"
-                  id="auto-eternity-amount"
-                  value={saveData.auto?.eternity?.amount?.toString() || '0'}
-                  onChange={(e) => handleValueChange('auto.eternity.amount', e.target.value)}
-                />
+                {isPCFormat() ? (
+                  <>
+                    <label htmlFor="auto-eternity-amount">Eternity Amount</label>
+                    <input
+                      type="text"
+                      id="auto-eternity-amount"
+                      value={saveData.auto?.eternity?.amount?.toString() || '0'}
+                      onChange={(e) => handleValueChange('auto.eternity.amount', e.target.value)}
+                    />
+                  </>
+                ) : (
+                  <BigNumberInput
+                    label="Eternity Amount"
+                    value={androidSaveData?.auto?.eternity?.amount || { mantissa: 0, exponent: 0 }}
+                    onChange={(value) => handleValueChange('auto.eternity.amount', value)}
+                    saveType={saveType}
+                  />
+                )}
                 {renderValidationIndicator('auto.eternity.amount')}
               </div>
               
@@ -391,12 +403,21 @@ const AutoBuyersSection: React.FC<SectionProps> = ({
               
               <div className="form-group">
                 <label htmlFor="auto-reality-rm">Reality Machines</label>
-                <input
-                  type="text"
-                  id="auto-reality-rm"
-                  value={saveData.auto?.reality?.rm?.toString() || '0'}
-                  onChange={(e) => handleValueChange('auto.reality.rm', e.target.value)}
-                />
+                {isPCFormat() ? (
+                  <input
+                    type="text"
+                    id="auto-reality-rm"
+                    value={saveData.auto?.reality?.rm?.toString() || '0'}
+                    onChange={(e) => handleValueChange('auto.reality.rm', e.target.value)}
+                  />
+                ) : (
+                  <BigNumberInput
+                    label="Reality Machines"
+                    value={androidSaveData?.auto?.reality?.rm || { mantissa: 0, exponent: 0 }}
+                    onChange={(value) => handleValueChange('auto.reality.rm', value)}
+                    saveType={saveType}
+                  />
+                )}
                 {renderValidationIndicator('auto.reality.rm')}
               </div>
               

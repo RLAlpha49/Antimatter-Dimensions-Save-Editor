@@ -19,6 +19,7 @@ describe('save serialization', () => {
     expect(decoded.data?.version).toBe(pcFixture.version);
     expect(decoded.data?.lastUpdate).toBe(pcFixture.lastUpdate);
     expect(decoded.data?.antimatter).toEqual(pcFixture.antimatter);
+    expect(decoded.data).toEqual(pcFixture);
   });
 
   it('round-trips the Android fixture', () => {
@@ -33,5 +34,6 @@ describe('save serialization', () => {
     expect(decoded.data?.version).toBe(androidFixture.version);
     expect(decoded.data?.lastUpdate).toBe(androidFixture.lastUpdate);
     expect(decoded.data?.brake).toBe(androidFixture.brake);
+    expect(decoded.data).toEqual(androidFixture);
   });
 });

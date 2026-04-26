@@ -31,6 +31,7 @@ const InfinitySection: React.FC<SectionProps> = ({
   // Cast saveData to specific type when needed
   const pcSaveData = isPCFormat() ? saveData as AntimatterDimensionsStruct : null;
   const androidSaveData = !isPCFormat() ? saveData as AntimatterDimensionsStructAndroid : null;
+  const typedSaveData = saveData as any;
 
   const tabs: SectionShellTab[] = [
     { id: 'general', title: 'General', icon: <FaCircle className="subtab-icon" /> },
@@ -57,12 +58,12 @@ const InfinitySection: React.FC<SectionProps> = ({
                   label="Infinity Points"
                   value={isPCFormat() ? 
                     (pcSaveData?.infinityPoints || '0') : 
-                    (androidSaveData?.infinity?.points || {mantissa: 0, exponent: 0})}
+                    (typedSaveData.infinityPoints || {mantissa: 0, exponent: 0})}
                   onChange={(value) => handleValueChange(isPCFormat() ? 
-                    'infinityPoints' : 'infinity.points', value)}
+                    'infinityPoints' : 'infinityPoints', value)}
                   saveType={saveType}
                 />
-                {renderValidationIndicator(isPCFormat() ? 'infinityPoints' : 'infinity.points')}
+                {renderValidationIndicator('infinityPoints')}
               </div>
               
               <div className="form-group">
@@ -70,12 +71,12 @@ const InfinitySection: React.FC<SectionProps> = ({
                   label="Infinities"
                   value={isPCFormat() ? 
                     (pcSaveData?.infinities || '0') : 
-                    (androidSaveData?.antimatter?.infinitied || {mantissa: 0, exponent: 0})}
+                    (typedSaveData.infinities || {mantissa: 0, exponent: 0})}
                   onChange={(value) => handleValueChange(isPCFormat() ? 
-                    'infinities' : 'antimatter.infinitied', value)}
+                    'infinities' : 'infinities', value)}
                   saveType={saveType}
                 />
-                {renderValidationIndicator(isPCFormat() ? 'infinities' : 'antimatter.infinitied')}
+                {renderValidationIndicator('infinities')}
               </div>
               
               {isPCFormat() && (
@@ -93,26 +94,25 @@ const InfinitySection: React.FC<SectionProps> = ({
               <div className="form-group">
                 <BigNumberInput
                   label="Infinity Power"
-                  value={saveData.infinityPower || (saveType === SaveType.PC ? '0' : {mantissa: 0, exponent: 0})}
+                  value={isPCFormat() ? 
+                    (pcSaveData?.infinityPower || '0') : 
+                    (typedSaveData.infinityPower || {mantissa: 0, exponent: 0})}
                   onChange={(value) => handleValueChange('infinityPower', value)}
                   saveType={saveType}
                 />
                 {renderValidationIndicator('infinityPower')}
               </div>
               
-              {isPCFormat() && (
-                <div className="form-group">
-                  <label htmlFor="IPMultPurchases">IP Multiplier Purchases</label>
-                  <input
-                    type="number"
-                    id="IPMultPurchases"
-                    value={pcSaveData?.IPMultPurchases || androidSaveData?.infinity?.IPMultPurchases || 0}
-                    onChange={(e) => handleValueChange(isPCFormat() ? 
-                      'IPMultPurchases' : 'infinity.IPMultPurchases', parseInt(e.target.value))}
-                  />
-                  {renderValidationIndicator(isPCFormat() ? 'IPMultPurchases' : 'infinity.IPMultPurchases')}
-                </div>
-              )}
+              <div className="form-group">
+                <label htmlFor="IPMultPurchases">{isPCFormat() ? 'IP Multiplier Purchases' : 'IP Multiplier Upgrades'}</label>
+                <input
+                  type="number"
+                  id="IPMultPurchases"
+                  value={isPCFormat() ? (pcSaveData?.IPMultPurchases || 0) : ((saveData as any).ipMultUpgrades || 0)}
+                  onChange={(e) => handleValueChange(isPCFormat() ? 'IPMultPurchases' : 'ipMultUpgrades', parseInt(e.target.value, 10) || 0)}
+                />
+                {renderValidationIndicator(isPCFormat() ? 'IPMultPurchases' : 'ipMultUpgrades')}
+              </div>
             </div>
           </div>
           
@@ -137,13 +137,13 @@ const InfinitySection: React.FC<SectionProps> = ({
                   <label htmlFor="brake">Break Infinity</label>
                   <select
                     id="brake"
-                    value={androidSaveData?.infinity?.break ? 'true' : 'false'}
-                    onChange={(e) => handleValueChange('infinity.break', e.target.value === 'true')}
+                    value={typedSaveData.brake ? 'true' : 'false'}
+                    onChange={(e) => handleValueChange('brake', e.target.value === 'true')}
                   >
                     <option value="true">Yes</option>
                     <option value="false">No</option>
                   </select>
-                  {renderValidationIndicator('infinity.break')}
+                  {renderValidationIndicator('brake')}
                 </div>
               )}
             </div>
@@ -170,12 +170,14 @@ const InfinitySection: React.FC<SectionProps> = ({
                   </div>
                   
                   <div className="form-group">
-                    <label htmlFor="inf-generatorUpgradeBits">Generator Upgrade Bits</label>
-                    <input
-                      type="number"
+                    <JsonTextareaField
                       id="inf-generatorUpgradeBits"
-                      value={pcSaveData?.infinityUpgrades?.length || 0}
-                      onChange={(e) => handleValueChange('infinityUpgrades', parseInt(e.target.value))}
+                      label="Infinity Upgrades"
+                      value={pcSaveData?.infinityUpgrades || []}
+                      onChange={(value) => handleValueChange('infinityUpgrades', value)}
+                      expectation="array"
+                      rows={3}
+                      fallbackValue={[]}
                     />
                     {renderValidationIndicator('infinityUpgrades')}
                   </div>
@@ -183,18 +185,31 @@ const InfinitySection: React.FC<SectionProps> = ({
               )}
               
               {!isPCFormat() && (
-                <div className="form-group">
-                  <JsonTextareaField
-                    id="inf-upgrades"
-                    label="Infinity Upgrades"
-                    value={androidSaveData?.infinity?.upgrades || []}
-                    onChange={(value) => handleValueChange('infinity.upgrades', value)}
-                    expectation="array"
-                    rows={3}
-                    fallbackValue={[]}
-                  />
-                  {renderValidationIndicator('infinity.upgrades')}
-                </div>
+                <>
+                  <div className="form-group">
+                    <label htmlFor="inf-upgradeBits">Upgrade Bits</label>
+                    <input
+                      type="number"
+                      id="inf-upgradeBits"
+                      value={(saveData as any).infinityUpgradeBits || 0}
+                      onChange={(e) => handleValueChange('infinityUpgradeBits', parseInt(e.target.value, 10) || 0)}
+                    />
+                    {renderValidationIndicator('infinityUpgradeBits')}
+                  </div>
+
+                  <div className="form-group">
+                    <JsonTextareaField
+                      id="inf-upgrades"
+                      label="Infinity Upgrades"
+                      value={androidSaveData?.infinity?.upgrades || []}
+                      onChange={(value) => handleValueChange('infinity.upgrades', value)}
+                      expectation="array"
+                      rows={3}
+                      fallbackValue={[]}
+                    />
+                    {renderValidationIndicator('infinity.upgrades')}
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -230,13 +245,10 @@ const InfinitySection: React.FC<SectionProps> = ({
                   value={isPCFormat() 
                     ? (pcSaveData?.challenge?.infinity?.completedBits || 0)
                     : (androidSaveData?.infinity?.challenge?.unlocked?.length || 0)}
-                  onChange={(e) => handleValueChange(isPCFormat() 
-                    ? 'challenge.infinity.completedBits' 
-                    : 'infinity.challenge.unlocked.length', parseInt(e.target.value))}
+                  onChange={isPCFormat() ? (e) => handleValueChange('challenge.infinity.completedBits', parseInt(e.target.value, 10) || 0) : undefined}
+                  readOnly={!isPCFormat()}
                 />
-                {renderValidationIndicator(isPCFormat() 
-                  ? 'challenge.infinity.completedBits' 
-                  : 'infinity.challenge.unlocked.length')}
+                {isPCFormat() && renderValidationIndicator('challenge.infinity.completedBits')}
               </div>
               
               <div className="form-group">

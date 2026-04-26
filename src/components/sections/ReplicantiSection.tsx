@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SectionProps } from './types';
 import { FaCircle, FaGlobe, FaDigitalTachograph } from 'react-icons/fa';
 import BigNumberInput from '../BigNumberInput';
+import { SaveType } from '../../services/SaveService';
 
 const ReplicantiSection: React.FC<SectionProps> = ({ 
   saveData, 
@@ -10,6 +11,7 @@ const ReplicantiSection: React.FC<SectionProps> = ({
   saveType 
 }) => {
   const [activeSubtab, setActiveSubtab] = useState<string>('settings');
+  const isPCFormat = saveType === SaveType.PC;
 
   // Handle subtab changes
   const handleSubtabClick = (subtabId: string) => {
@@ -105,24 +107,26 @@ const ReplicantiSection: React.FC<SectionProps> = ({
                 <input
                   type="number"
                   id="replicanti-chance"
-                  min="0.01"
-                  max="1"
-                  step="0.01"
-                  value={typedSaveData.replicanti?.chance || 0.01}
-                  onChange={(e) => handleValueChange('replicanti.chance', parseFloat(e.target.value))}
+                  min="0"
+                  max={isPCFormat ? '1' : undefined}
+                  step={isPCFormat ? '0.01' : '1'}
+                  value={isPCFormat ? (typedSaveData.replicanti?.chance || 0.01) : (typedSaveData.replicanti?.chanceUpgrades || 0)}
+                  onChange={(e) => handleValueChange(isPCFormat ? 'replicanti.chance' : 'replicanti.chanceUpgrades', isPCFormat ? parseFloat(e.target.value) : (parseInt(e.target.value, 10) || 0))}
                 />
-                {renderValidationIndicator('replicanti.chance')}
+                {renderValidationIndicator(isPCFormat ? 'replicanti.chance' : 'replicanti.chanceUpgrades')}
               </div>
               
-              <div className="form-group">
-                <BigNumberInput
-                  label="Chance Upgrade Cost"
-                  value={typedSaveData.replicanti?.chanceCost || '1e+150'}
-                  onChange={(value) => handleValueChange('replicanti.chanceCost', value)}
-                  saveType={saveType}
-                />
-                {renderValidationIndicator('replicanti.chanceCost')}
-              </div>
+              {isPCFormat && (
+                <div className="form-group">
+                  <BigNumberInput
+                    label="Chance Upgrade Cost"
+                    value={typedSaveData.replicanti?.chanceCost || '1e+150'}
+                    onChange={(value) => handleValueChange('replicanti.chanceCost', value)}
+                    saveType={saveType}
+                  />
+                  {renderValidationIndicator('replicanti.chanceCost')}
+                </div>
+              )}
             </div>
           </div>
           
@@ -134,22 +138,24 @@ const ReplicantiSection: React.FC<SectionProps> = ({
                 <input
                   type="number"
                   id="replicanti-interval"
-                  min="1"
-                  value={typedSaveData.replicanti?.interval || 1000}
-                  onChange={(e) => handleValueChange('replicanti.interval', parseInt(e.target.value))}
+                  min="0"
+                  value={isPCFormat ? (typedSaveData.replicanti?.interval || 1000) : (typedSaveData.replicanti?.intervalUpgrades || 0)}
+                  onChange={(e) => handleValueChange(isPCFormat ? 'replicanti.interval' : 'replicanti.intervalUpgrades', parseInt(e.target.value, 10) || 0)}
                 />
-                {renderValidationIndicator('replicanti.interval')}
+                {renderValidationIndicator(isPCFormat ? 'replicanti.interval' : 'replicanti.intervalUpgrades')}
               </div>
               
-              <div className="form-group">
-                <BigNumberInput
-                  label="Interval Upgrade Cost"
-                  value={typedSaveData.replicanti?.intervalCost || '1e+140'}
-                  onChange={(value) => handleValueChange('replicanti.intervalCost', value)}
-                  saveType={saveType}
-                />
-                {renderValidationIndicator('replicanti.intervalCost')}
-              </div>
+              {isPCFormat && (
+                <div className="form-group">
+                  <BigNumberInput
+                    label="Interval Upgrade Cost"
+                    value={typedSaveData.replicanti?.intervalCost || '1e+140'}
+                    onChange={(value) => handleValueChange('replicanti.intervalCost', value)}
+                    saveType={saveType}
+                  />
+                  {renderValidationIndicator('replicanti.intervalCost')}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -172,26 +178,41 @@ const ReplicantiSection: React.FC<SectionProps> = ({
               </div>
               
               <div className="form-group">
-                <label htmlFor="replicanti-gal-cap">Galaxy Cap</label>
+                <label htmlFor="replicanti-gal-cap">{isPCFormat ? 'Galaxy Cap' : 'Max Galaxy Upgrades'}</label>
                 <input
                   type="number"
                   id="replicanti-gal-cap"
                   min="0"
-                  value={typedSaveData.replicanti?.boughtGalaxyCap || 0}
-                  onChange={(e) => handleValueChange('replicanti.boughtGalaxyCap', parseInt(e.target.value))}
+                  value={isPCFormat ? (typedSaveData.replicanti?.boughtGalaxyCap || 0) : (typedSaveData.replicanti?.maxGalaxiesUpgrades || 0)}
+                  onChange={(e) => handleValueChange(isPCFormat ? 'replicanti.boughtGalaxyCap' : 'replicanti.maxGalaxiesUpgrades', parseInt(e.target.value, 10) || 0)}
                 />
-                {renderValidationIndicator('replicanti.boughtGalaxyCap')}
+                {renderValidationIndicator(isPCFormat ? 'replicanti.boughtGalaxyCap' : 'replicanti.maxGalaxiesUpgrades')}
               </div>
               
-              <div className="form-group">
-                <BigNumberInput
-                  label="Galaxy Cost"
-                  value={typedSaveData.replicanti?.galCost || '1e+170'}
-                  onChange={(value) => handleValueChange('replicanti.galCost', value)}
-                  saveType={saveType}
-                />
-                {renderValidationIndicator('replicanti.galCost')}
-              </div>
+              {isPCFormat ? (
+                <div className="form-group">
+                  <BigNumberInput
+                    label="Galaxy Cost"
+                    value={typedSaveData.replicanti?.galCost || '1e+170'}
+                    onChange={(value) => handleValueChange('replicanti.galCost', value)}
+                    saveType={saveType}
+                  />
+                  {renderValidationIndicator('replicanti.galCost')}
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label htmlFor="replicanti-galaxybuyer">Galaxy Buyer</label>
+                  <select
+                    id="replicanti-galaxybuyer"
+                    value={typedSaveData.replicanti?.galaxybuyer ? 'true' : 'false'}
+                    onChange={(e) => handleValueChange('replicanti.galaxybuyer', e.target.value === 'true')}
+                  >
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                  {renderValidationIndicator('replicanti.galaxybuyer')}
+                </div>
+              )}
             </div>
           </div>
         </div>
